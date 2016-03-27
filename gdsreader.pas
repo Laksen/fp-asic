@@ -29,7 +29,7 @@ type
     property Layer: longint read fLayer;
 
     property Count: longint read fCount;
-    property Point[AIndex: longint]: TXY read GetPoint write SetPoint;
+    property Point[AIndex: longint]: TXY read GetPoint write SetPoint; default;
   end;
 
   TStructure = class
@@ -49,13 +49,13 @@ type
 
     property Name: string read fName;
     property Count: longint read GetCount;
-    property Polygon[AIndex: longint]: TPolygon read GetPolygon;
+    property Polygon[AIndex: longint]: TPolygon read GetPolygon; default;
   end;
+
+  { TGDS2Reader }
 
   TGDS2Reader = class
   private
-    fSt: TStream;
-
     fUnits: double;
     fStructures: TObjectList;
 
@@ -64,22 +64,25 @@ type
 
     function GetCount: longint;
     function GetStructure(AIndex: longint): TStructure;
-    procedure InitParse;
-    procedure Consume(ARecord: byte);
+    procedure InitParse(ASt: TStream);
+    procedure Consume(ASt: TStream; ARecord: byte);
 
-    function ReadWord: word;
-    function ReadDWord: longint;
-    function ReadQWord: qword;
-    function ReadReal8: double;
+    function ReadWord(ASt: TStream): word;
+    function ReadDWord(ASt: TStream): longint;
+    function ReadQWord(ASt: TStream): qword;
+    function ReadReal8(ASt: TStream): double;
 
-    procedure ParseElement(AStructure: TStructure);
-    procedure Parse;
+    procedure ParseElement(ASt: TStream; AStructure: TStructure);
+    procedure Parse(ASt: TStream);
   public
-    constructor Create(AStr: TStream);
+    procedure LoadFromStream(AStream: TStream);
+    procedure SaveToStream(AStream: TStream);
+
+    constructor Create();
     destructor Destroy; override;
 
     property Count: longint read GetCount;
-    property Structure[AIndex: longint]: TStructure read GetStructure;
+    property Structure[AIndex: longint]: TStructure read GetStructure; default;
   end;
 
 implementation
@@ -257,15 +260,15 @@ begin
     result:=Max(result,fPoints[i]);
 end;
 
-procedure TGDS2Reader.InitParse;
+procedure TGDS2Reader.InitParse(ASt: TStream);
 var
   l: Word;
 begin
-  fCurrPos:=fSt.Position;
+  fCurrPos:=ASt.Position;
 
-  l:=beton(fSt.ReadWord);
-  fCurrent:=fSt.ReadByte;
-  fCurrentData:=fSt.ReadByte;
+  l:=beton(ASt.ReadWord);
+  fCurrent:=ASt.ReadByte;
+  fCurrentData:=ASt.ReadByte;
 
   fNextPos:=fCurrPos+l;
   fLeftData:=l-4;
@@ -281,52 +284,52 @@ begin
   result:=TStructure(fStructures[AIndex]);
 end;
 
-procedure TGDS2Reader.Consume(ARecord: byte);
+procedure TGDS2Reader.Consume(ASt: TStream; ARecord: byte);
 var
   l: Word;
 begin
   if ARecord<>fCurrent then
     writeln('Expected ',ARecord,' but was at ', fCurrent);
 
-  fSt.Seek(fNextPos, soFromBeginning);
-  fCurrPos:=fSt.Position;
+  ASt.Seek(fNextPos, soFromBeginning);
+  fCurrPos:=aSt.Position;
 
-  if fSt.Position>=fSt.Size then
+  if ASt.Position>=ASt.Size then
     begin
       fCurrent:=255;
       exit;
     end;
 
-  l:=beton(fSt.ReadWord);
-  fCurrent:=fSt.ReadByte;
-  fCurrentData:=fSt.ReadByte;
+  l:=beton(ASt.ReadWord);
+  fCurrent:=ASt.ReadByte;
+  fCurrentData:=ASt.ReadByte;
 
   fNextPos:=fCurrPos+l;
   fLeftData:=l-4;
 end;
 
-function TGDS2Reader.ReadWord: word;
+function TGDS2Reader.ReadWord(ASt: TStream): word;
 begin
-  result:=BEtoN(fst.ReadWord);
+  result:=BEtoN(Ast.ReadWord);
 end;
 
-function TGDS2Reader.ReadDWord: longint;
+function TGDS2Reader.ReadDWord(ASt: TStream): longint;
 begin
-  result:=BEtoN(longint(fst.ReadDWord));
+  result:=BEtoN(longint(ASt.ReadDWord));
 end;
 
-function TGDS2Reader.ReadQWord: qword;
+function TGDS2Reader.ReadQWord(ASt: TStream): qword;
 begin
-  result:=BEtoN(fst.ReadQWord);
+  result:=BEtoN(ASt.ReadQWord);
 end;
 
-function TGDS2Reader.ReadReal8: double;
+function TGDS2Reader.ReadReal8(ASt: TStream): double;
 var
   x: qword;
   s: Byte;
   sign, exponent: longint;
 begin
-  x:=NtoBE(ReadQWord);
+  x:=NtoBE(ReadQWord(ASt));
 
   s:=(x and $FF);
   x:=x shr 8;
@@ -341,7 +344,7 @@ begin
   result:=result * power(16,exponent-64);
 end;
 
-procedure TGDS2Reader.ParseElement(AStructure: TStructure);
+procedure TGDS2Reader.ParseElement(ASt: TStream; AStructure: TStructure);
 var
   Layer: Word;
   i, pts: longint;
@@ -351,16 +354,16 @@ begin
   case fCurrent of
     GDS_BOUNDARY:
       begin
-        Consume(GDS_BOUNDARY);
+        Consume(ASt, GDS_BOUNDARY);
         if fCurrent=GDS_ELFLAGS then
-          Consume(GDS_ELFLAGS);
+          Consume(ASt, GDS_ELFLAGS);
         if fCurrent=GDS_PLEX then
-          Consume(GDS_PLEX);
+          Consume(ASt, GDS_PLEX);
 
-        Layer:=ReadWord;
-        Consume(GDS_LAYER);
+        Layer:=ReadWord(ASt);
+        Consume(ASt, GDS_LAYER);
 
-        Consume(GDS_DATATYPE);
+        Consume(ASt, GDS_DATATYPE);
 
         pts:=fLeftData div 8;
 
@@ -368,121 +371,129 @@ begin
 
         for i:=0 to pts-1 do
         begin
-          x:=ReadDWord;
-          y:=ReadDWord;
+          x:=ReadDWord(ASt);
+          y:=ReadDWord(ASt);
 
           poly.Point[i]:=XY(x*fUnits,y*fUnits);
         end;
         AStructure.AddPoly(poly);
 
-        Consume(GDS_XY);
+        Consume(ASt, GDS_XY);
       end;
     GDS_BOX:
       begin
-        Consume(GDS_BOX);
-        if fCurrent=GDS_ELFLAGS then Consume(GDS_ELFLAGS);
-        if fCurrent=GDS_PLEX then Consume(GDS_PLEX);
+        Consume(ASt, GDS_BOX);
+        if fCurrent=GDS_ELFLAGS then Consume(ASt, GDS_ELFLAGS);
+        if fCurrent=GDS_PLEX then Consume(ASt, GDS_PLEX);
 
-        Layer:=ReadWord;
-        Consume(GDS_LAYER);
+        Layer:=ReadWord(ASt);
+        Consume(ASt, GDS_LAYER);
 
-        Consume(GDS_BOXTYPE);
+        Consume(ASt, GDS_BOXTYPE);
 
-        Consume(GDS_XY);
+        Consume(ASt, GDS_XY);
       end;
     GDS_PATH:
       begin
-        Consume(GDS_PATH);
-        if fCurrent=GDS_ELFLAGS then Consume(GDS_ELFLAGS);
-        if fCurrent=GDS_PLEX then Consume(GDS_PLEX);
+        Consume(ASt, GDS_PATH);
+        if fCurrent=GDS_ELFLAGS then Consume(ASt, GDS_ELFLAGS);
+        if fCurrent=GDS_PLEX then Consume(ASt, GDS_PLEX);
 
-        Layer:=ReadWord;
-        Consume(GDS_LAYER);
+        Layer:=ReadWord(ASt);
+        Consume(ASt, GDS_LAYER);
 
-        Consume(GDS_DATATYPE);
+        Consume(ASt, GDS_DATATYPE);
 
-        if fCurrent=GDS_PATHTYPE then Consume(GDS_PATHTYPE);
-        if fCurrent=GDS_WIDTH then Consume(GDS_WIDTH);
-        if fCurrent=GDS_BGNEXTN then Consume(GDS_BGNEXTN);
-        if fCurrent=GDS_ENDTEXTN then Consume(GDS_ENDTEXTN);
+        if fCurrent=GDS_PATHTYPE then Consume(ASt, GDS_PATHTYPE);
+        if fCurrent=GDS_WIDTH then Consume(ASt, GDS_WIDTH);
+        if fCurrent=GDS_BGNEXTN then Consume(ASt, GDS_BGNEXTN);
+        if fCurrent=GDS_ENDTEXTN then Consume(ASt, GDS_ENDTEXTN);
 
-        Consume(GDS_XY);
+        Consume(ASt, GDS_XY);
       end;
     else
       begin
         while fCurrent<>GDS_ENDEL do
-          consume(fCurrent);
+          consume(ASt, fCurrent);
         //writeln('Element: ', fCurrent);
       end;
   end;
-  consume(GDS_ENDEL);
+  Consume(ASt, GDS_ENDEL);
 end;
 
-procedure TGDS2Reader.Parse;
+procedure TGDS2Reader.Parse(ASt: TStream);
 var
   str: string;
   struct: TStructure;
 begin
-  InitParse;
+  InitParse(ASt);
 
-  Consume(GDS_HEADER);
-  Consume(GDS_BGNLIB);
-  if fCurrent=GDS_LIBDIRSIZE then Consume(GDS_LIBDIRSIZE);
-  if fCurrent=GDS_STRFNAME then Consume(GDS_STRFNAME);
-  if fCurrent=GDS_LIBSECUR then Consume(GDS_LIBSECUR);
+  Consume(ASt, GDS_HEADER);
+  Consume(ASt, GDS_BGNLIB);
+  if fCurrent=GDS_LIBDIRSIZE then Consume(ASt, GDS_LIBDIRSIZE);
+  if fCurrent=GDS_STRFNAME then Consume(ASt, GDS_STRFNAME);
+  if fCurrent=GDS_LIBSECUR then Consume(ASt, GDS_LIBSECUR);
 
-  Consume(GDS_LIBNAME);
+  Consume(ASt, GDS_LIBNAME);
 
-  if fCurrent=GDS_REFLIBS then Consume(GDS_REFLIBS);
-  if fCurrent=GDS_FONTS then Consume(GDS_FONTS);
-  if fCurrent=GDS_ATTRTABLE then Consume(GDS_ATTRTABLE);
-  if fCurrent=GDS_GENERATIONS then Consume(GDS_GENERATIONS);
+  if fCurrent=GDS_REFLIBS then Consume(ASt, GDS_REFLIBS);
+  if fCurrent=GDS_FONTS then Consume(ASt, GDS_FONTS);
+  if fCurrent=GDS_ATTRTABLE then Consume(ASt, GDS_ATTRTABLE);
+  if fCurrent=GDS_GENERATIONS then Consume(ASt, GDS_GENERATIONS);
 
   if fCurrent=GDS_FORMAT then
     begin
-      Consume(GDS_FORMAT);
+      Consume(ASt, GDS_FORMAT);
       if fCurrent=GDS_MASK then
         begin
           while fCurrent=GDS_MASK do
-            Consume(GDS_MASK);
-          Consume(GDS_ENDMASKS);
+            Consume(ASt, GDS_MASK);
+          Consume(ASt, GDS_ENDMASKS);
         end;
     end;
 
-  ReadReal8;
-  fUnits:=ReadReal8;
-  Consume(GDS_UNITS);
+  ReadReal8(ASt);
+  fUnits:=ReadReal8(ASt);
+  Consume(ASt, GDS_UNITS);
 
   while fCurrent=GDS_BGNSTR do
     begin
-      Consume(GDS_BGNSTR);
+      Consume(ASt, GDS_BGNSTR);
 
       setlength(str, fLeftData);
-      fst.Read(str[1], fLeftData);
+      ASt.Read(str[1], fLeftData);
       str:=TrimRight(str);
 
       struct:=TStructure.Create(str);
-      Consume(GDS_STRNAME);
-      if fCurrent=GDS_STRCLASS then Consume(GDS_STRCLASS);
+      Consume(ASt, GDS_STRNAME);
+      if fCurrent=GDS_STRCLASS then Consume(ASt, GDS_STRCLASS);
 
       while fCurrent<>GDS_ENDSTR do
-        ParseElement(struct);
+        ParseElement(ast, struct);
 
       fStructures.Add(struct);
 
-      Consume(GDS_ENDSTR);
+      Consume(ASt, GDS_ENDSTR);
     end;
 
-  Consume(GDS_ENDLIB);
+  Consume(ASt, GDS_ENDLIB);
 end;
 
-constructor TGDS2Reader.Create(AStr: TStream);
+procedure TGDS2Reader.LoadFromStream(AStream: TStream);
+begin
+  fStructures.Clear;
+  Parse(AStream);
+end;
+
+procedure TGDS2Reader.SaveToStream(AStream: TStream);
+begin
+
+end;
+
+constructor TGDS2Reader.Create;
 begin
   inherited Create;
-  fst := AStr;
   fStructures:=TObjectList.Create(true);
-
-  Parse;
 end;
 
 destructor TGDS2Reader.Destroy;

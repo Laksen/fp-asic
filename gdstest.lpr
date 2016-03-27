@@ -4,14 +4,15 @@ program gdstest;
 {$h+}
 
 uses
+  cmem,
   sysutils,classes,
   gdsreader, math,
   sdl,
   sdl_gfx;
 
 const
-  w = 2048;
-  h = 2048;
+  w = 800;
+  h = 600;
 
 var
   s: TFileStream;
@@ -128,7 +129,8 @@ end;
 var i: longint;
 begin
   s:=TFileStream.Create('osu035_stdcells.gds2', fmopenread);
-  gd:=TGDS2Reader.Create(s);
+  gd:=TGDS2Reader.Create();
+  gd.LoadFromStream(s);
 
   for i:=0 to gd.count-1 do
     writeln(i,': ',gd.Structure[i].Name);
