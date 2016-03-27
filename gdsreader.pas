@@ -52,8 +52,6 @@ type
     property Polygon[AIndex: longint]: TPolygon read GetPolygon; default;
   end;
 
-  { TGDS2Reader }
-
   TGDS2Reader = class
   private
     fUnits: double;
@@ -64,6 +62,7 @@ type
 
     function GetCount: longint;
     function GetStructure(AIndex: longint): TStructure;
+
     procedure InitParse(ASt: TStream);
     procedure Consume(ASt: TStream; ARecord: byte);
 
@@ -74,6 +73,13 @@ type
 
     procedure ParseElement(ASt: TStream; AStructure: TStructure);
     procedure Parse(ASt: TStream);
+
+    procedure WriteRecord(AStream: TStream; ARecType, ADataType: byte; ALength: longint);
+    procedure WriteWord(AStream: TStream; AData: smallint);
+    procedure WriteDWord(AStream: TStream; AData: longint);
+    procedure WriteZeros(AStream: TStream; ALength: longint);
+    procedure WriteString(AStream: TStream; const AString: string);
+    procedure WriteReal8(AStream: TStream; AValue: double);
   public
     procedure LoadFromStream(AStream: TStream);
     procedure SaveToStream(AStream: TStream);
@@ -83,6 +89,8 @@ type
 
     property Count: longint read GetCount;
     property Structure[AIndex: longint]: TStructure read GetStructure; default;
+
+    property Units: double read fUnits write fUnits;
   end;
 
 implementation
@@ -105,7 +113,15 @@ begin
   result.y:=math.max(a.y, b.y);
 end;
 
-const             
+const
+  GDS_DATA_None = 0;
+  GDS_DATA_Bits = 1;
+  GDS_DATA_16 =   2;
+  GDS_DATA_32 = 3;
+  GDS_DATA_REAL4 = 4;
+  GDS_DATA_REAL8  = 5;
+  GDS_DATA_STRING = 6;
+
   GDS_HEADER    = 0;
   GDS_BGNLIB    = 1;
   GDS_LIBNAME   = 2;
@@ -485,9 +501,170 @@ begin
   Parse(AStream);
 end;
 
-procedure TGDS2Reader.SaveToStream(AStream: TStream);
+procedure TGDS2Reader.WriteRecord(AStream: TStream; ARecType, ADataType: byte; ALength: longint);
+var
+  l: word;
 begin
+  l:=(ALength+4+1) and $FFFE;
 
+  AStream.WriteWord(NtoBE(l));
+  AStream.WriteByte(ARecType);
+  AStream.WriteByte(ADataType);
+end;
+
+procedure TGDS2Reader.WriteWord(AStream: TStream; AData: smallint);
+begin
+  AData:=NtoBE(AData);
+  AStream.Write(AData, 2);
+end;
+
+procedure TGDS2Reader.WriteDWord(AStream: TStream; AData: longint);
+begin
+  AData:=NtoBE(AData);
+  AStream.Write(AData, 4);
+end;
+
+procedure TGDS2Reader.WriteZeros(AStream: TStream; ALength: longint);
+begin
+  while alength>0 do
+    begin
+      AStream.WriteByte(0);
+      dec(alength);
+    end;
+end;
+
+procedure TGDS2Reader.WriteString(AStream: TStream; const AString: string);
+begin
+  AStream.Write(AString[1], length(AString));
+  if odd(length(AString)) then
+    AStream.WriteByte(0);
+end;
+
+procedure Encode(AVal: double; out AEncoded: qword);
+var
+  ex: Integer;
+  aexp: byte;
+begin
+  if AVal<0 then
+    begin
+      AExp:=$80;
+      AVal:=-AVal;
+    end
+  else
+    AExp:=0;
+
+  ex:=floor(logn(16, AVal))+1;
+  AExp:=AExp or (ex+64) and $7F;
+
+  AVal:=AVal*power(16, -ex);
+
+  AEncoded:=((round(AVal*power(2,56))) and $FFFFFFFFFFFFFF) or (qword(aexp) shl 56);
+end;
+
+procedure TGDS2Reader.WriteReal8(AStream: TStream; AValue: double);
+var
+  ex: Integer;
+  aexp: byte;
+  AEncoded: qword;
+begin
+  if AValue<0 then
+    begin
+      AExp:=$80;
+      AValue:=-AValue;
+    end
+  else
+    AExp:=0;
+
+  ex:=floor(logn(16, AValue))+1;
+  AExp:=AExp or (ex+64) and $7F;
+
+  AValue:=AValue*power(16, -ex);
+
+  AEncoded:=((round(AValue*power(2,56))) and $FFFFFFFFFFFFFF) or (qword(aexp) shl 56);
+
+  AStream.WriteQWord(NtoBE(AEncoded));
+end;
+
+procedure TGDS2Reader.SaveToStream(AStream: TStream);
+var
+  i, i2, i3: longint;
+  struct: TStructure;
+  poly: TPolygon;
+  pt: TXY;
+begin
+  WriteRecord(AStream, GDS_HEADER, GDS_DATA_16, 2);
+  WriteWord(AStream, 6);
+
+  WriteRecord(AStream, GDS_BGNLIB, GDS_DATA_16, $18);
+  WriteZeros(AStream, $18);
+  //if fCurrent=GDS_LIBDIRSIZE then WriteRecord(AStream, GDS_LIBDIRSIZE);
+  //if fCurrent=GDS_STRFNAME then WriteRecord(AStream, GDS_STRFNAME);
+  //if fCurrent=GDS_LIBSECUR then WriteRecord(AStream, GDS_LIBSECUR);
+
+  WriteRecord(AStream, GDS_LIBNAME, GDS_DATA_STRING, 2);
+  WriteString(AStream, 'NA');
+
+  {if fCurrent=GDS_REFLIBS then WriteRecord(AStream, GDS_REFLIBS);
+  if fCurrent=GDS_FONTS then WriteRecord(AStream, GDS_FONTS);
+  if fCurrent=GDS_ATTRTABLE then WriteRecord(AStream, GDS_ATTRTABLE);
+  if fCurrent=GDS_GENERATIONS then WriteRecord(AStream, GDS_GENERATIONS);}
+
+  {if fCurrent=GDS_FORMAT then
+    begin
+      WriteRecord(AStream, GDS_FORMAT);
+      if fCurrent=GDS_MASK then
+        begin
+          while fCurrent=GDS_MASK do
+            WriteRecord(AStream, GDS_MASK);
+          WriteRecord(AStream, GDS_ENDMASKS);
+        end;
+    end;}
+
+  WriteRecord(AStream, GDS_UNITS, GDS_DATA_REAL8, 16);
+  WriteReal8(AStream, 1);
+  WriteReal8(AStream, fUnits);
+
+  for i:=0 to Count-1 do
+    begin
+      struct:=Structure[i];
+
+      WriteRecord(AStream, GDS_BGNSTR, GDS_DATA_16, $18);
+      WriteZeros(AStream, $18);
+
+      WriteRecord(AStream, GDS_STRNAME, GDS_DATA_STRING, length(struct.name));
+      WriteString(AStream, Struct.Name);
+
+      //if fCurrent=GDS_STRCLASS then WriteRecord(AStream, GDS_STRCLASS);
+
+      for i2:=0 to struct.Count-1 do
+        begin
+          poly:=struct.Polygon[i2];
+
+          WriteRecord(AStream, GDS_BOUNDARY, GDS_DATA_None, 0);
+
+          WriteRecord(AStream, GDS_LAYER, GDS_DATA_16, 2);
+          WriteWord(AStream, poly.Layer);
+
+          WriteRecord(AStream, GDS_DATATYPE, GDS_DATA_16, 2);
+          WriteWord(AStream, 0);
+
+          WriteRecord(AStream, GDS_XY, GDS_DATA_32, poly.Count*8);
+
+          for i3:=0 to poly.Count-1 do
+          begin
+            pt:=poly[i3];
+
+            WriteDWord(AStream, round(pt.X/fUnits));
+            WriteDWord(AStream, round(pt.Y/fUnits));
+          end;
+
+          WriteRecord(AStream, GDS_ENDEL, GDS_DATA_None, 0);
+        end;
+
+      WriteRecord(AStream, GDS_ENDSTR, GDS_DATA_None, 0);
+    end;
+
+  WriteRecord(AStream, GDS_ENDLIB, GDS_DATA_None, 0);
 end;
 
 constructor TGDS2Reader.Create;

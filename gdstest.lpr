@@ -55,6 +55,7 @@ const
   );
 var
   Layers: array[0..16] of longint;
+  i: Integer;
 
 function GetColor(ALayer: LongInt): longword;
 var
@@ -126,11 +127,17 @@ begin
   SDL_Quit;
 end;
 
-var i: longint;
 begin
-  s:=TFileStream.Create('osu035_stdcells.gds2', fmopenread);
   gd:=TGDS2Reader.Create();
+
+ // s:=TFileStream.Create('osu035_stdcells.gds2', fmopenread);
+  s:=TFileStream.Create('test.gds2', fmopenread);
   gd.LoadFromStream(s);
+  s.free;
+
+  {s:=TFileStream.Create('test.gds2', fmOpenWrite or fmCreate);
+  gd.SaveToStream(s);
+  s.free;}
 
   for i:=0 to gd.count-1 do
     writeln(i,': ',gd.Structure[i].Name);
@@ -138,6 +145,5 @@ begin
   plot;
 
   gd.free;
-  s.free;
 end.
 
