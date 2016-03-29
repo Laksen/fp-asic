@@ -40,6 +40,7 @@ type
     fInputs,
     fOutputs: TStringList;
     fSubCircuits: TObjectList;
+    procedure AddStr(AList: TStringList; var AStr: string);
     function GetCount: longint;
     function GetSubCircuit(AIndex: longint): TSubCircuit;
   public
@@ -114,11 +115,15 @@ begin
   inherited Destroy;
 end;
 
-procedure AddStr(AList: TStringList; const AStr: string);
+procedure TBlifReader.AddStr(AList: TStringList; var AStr: string);
 var
   s: String;
 begin
   s:=trim(AStr);
+
+  if s='$true' then s:=FVDDName
+  else if s='$false' then s:=FGNDName;
+
   if s<>'' then
     AList.Add(s);
 end;
@@ -126,7 +131,7 @@ end;
 procedure TBlifReader.LoadFromStream(AStream: TStream);
 var
   st: TStringList;
-  s, nr, pin: String;
+  s, nr, pin, t: String;
   i: longint;
   ckt: TSubCircuit;
 begin
@@ -149,7 +154,10 @@ begin
         delete(s,1,8);
 
         while pos(' ', s)>0 do
-          AddStr(fInputs, Copy2SpaceDel(s));
+        begin
+          t:=Copy2SpaceDel(s);
+          AddStr(fInputs, t);
+        end;
         AddStr(fInputs, s);
       end
       else if pos('.outputs',s)=1 then
@@ -157,7 +165,10 @@ begin
         delete(s,1,9);
 
         while pos(' ', s)>0 do
-          AddStr(fOutputs, Copy2SpaceDel(s));
+        begin
+          t:=Copy2SpaceDel(s);
+          AddStr(fOutputs, t);
+        end;
         AddStr(fOutputs, s);
       end
       else if pos('.names',s)=1 then

@@ -5,7 +5,7 @@ unit gdsreader;
 interface
 
 uses
-  Classes, SysUtils, contnrs,
+  Classes, SysUtils, contnrs, strutils,
   math;
 
 type
@@ -15,18 +15,18 @@ type
 
   TPolygon = class
   private
-    fLayer,
+    fLayer: string;
     fCount: longint;
     fPoints: array of TXY;
     function GetPoint(AIndex: longint): TXY;
     procedure SetPoint(AIndex: longint; AValue: TXY);
   public
-    constructor Create(APoints, ALayer: longint);
+    constructor Create(APoints: longint; const ALayer: string);
 
     function MinPoint: TXY;
     function MaxPoint: TXY;
 
-    property Layer: longint read fLayer;
+    property Layer: string read fLayer;
 
     property Count: longint read fCount;
     property Point[AIndex: longint]: TXY read GetPoint write SetPoint; default;
@@ -52,16 +52,27 @@ type
     property Polygon[AIndex: longint]: TPolygon read GetPolygon; default;
   end;
 
+  TGDS2Layer = record
+    ID: longint;
+    Name: string;
+  end;
+
+  TGDS2LayerMap = array of TGDS2Layer;
+
   TGDS2Reader = class
   private
     fUnits: double;
     fStructures: TObjectList;
+
+    fLayers: TGDS2LayerMap;
 
     fCurrPos,fNextPos,fLeftData: int64;
     fCurrent,fCurrentData: byte;
 
     function GetCount: longint;
     function GetStructure(AIndex: longint): TStructure;
+    function GetLayer(AIndex: longint): string;
+    function GetLayerID(const AName: string): longint;
 
     procedure InitParse(ASt: TStream);
     procedure Consume(ASt: TStream; ARecord: byte);
@@ -81,7 +92,7 @@ type
     procedure WriteString(AStream: TStream; const AString: string);
     procedure WriteReal8(AStream: TStream; AValue: double);
   public
-    procedure LoadFromStream(AStream: TStream);
+    procedure LoadFromStream(AStream: TStream; const ALayers: TGDS2LayerMap = nil);
     procedure SaveToStream(AStream: TStream);
 
     constructor Create();
@@ -93,7 +104,13 @@ type
     property Units: double read fUnits write fUnits;
   end;
 
+procedure LoadGDS(const AFilename, AMapFilename: string);
+function LoadMap(const AFilename: string): TGDS2LayerMap;
+
 implementation
+
+uses
+  cells;
 
 function XY(AX, AY: double): TXY;
 begin
@@ -182,17 +199,92 @@ const
   GDS_STRFNAME  = $3A;
   GDS_LIBSECUR  = $3B;
 
-{$packrecords 1}
+procedure LoadGDS(const AFilename, AMapFilename: string);
+var
+  map: TGDS2LayerMap;
+  gd: TGDS2Reader;
+  s: TFileStream;
+  str: TStructure;
+  i, i2, i3: longint;
+  c: TCell;
+  poly: TPolygon;
+  layer: TLayer;
+  p: TPoly;
+begin
+  if (AMapFilename<>'') and
+     FileExists(AMapFilename) then
+    map:=LoadMap(AMapFilename)
+  else
+    map:=nil;
 
-type
-  THeader = record
-    case integer of
-      0: (data: longword);
-      1: (
-        length: word;
-        rectype,
-        datatype: byte);
+  gd:=TGDS2Reader.Create;
+  try
+    s:=TFileStream.Create(AFilename, fmOpenRead);
+    try
+      gd.LoadFromStream(s);
+
+      for i:=0 to gd.Count-1 do
+      begin
+        str:=gd[i];
+
+        if HasCell(str.Name) then continue;
+
+        c:=TCell.Create(str.Name);
+
+        for i2:=0 to str.Count-1 do
+        begin
+          poly:=str[i2];
+
+          layer:=GetLayer(poly.Layer);
+
+          p.Layer:=layer;
+          setlength(p.Points, poly.Count);
+          for i3:=0 to poly.Count-1 do
+            p.points[i3]:=GetCoord(poly[i3].X, poly[i3].y);
+
+          c.AddPoly(p);
+        end;
+
+        RegisterCell(c);
+      end;
+    finally
+      s.free;
+    end;
+  finally
+    gd.Free;
   end;
+end;
+
+function LoadMap(const AFilename: string): TGDS2LayerMap;
+var
+  st: TStringList;
+  s, name: String;
+  i, id: longint;
+begin
+  setlength(result,0);
+
+  st:=TStringList.Create;
+  try
+    st.LoadFromFile(AFilename);
+
+    for i:=0 to st.Count-1 do
+    begin
+      s:=trim(st[i]);
+      if s='' then continue;
+      if pos('#',s)=1 then continue;
+
+      name:=Copy2SpaceDel(s); s:=trim(s);
+      Copy2SpaceDel(s); s:=trim(s);
+      id:=strtoint(Copy2SpaceDel(s));
+
+      setlength(result, high(result)+2);
+      result[high(result)].ID:=id;
+      result[high(result)].Name:=name;
+    end;
+  finally
+    st.free;
+  end;
+end;
 
 function TStructure.GetCount: longint;
 begin
@@ -250,7 +342,7 @@ begin
   fPoints[AIndex]:=AValue;
 end;
 
-constructor TPolygon.Create(APoints, ALayer: longint);
+constructor TPolygon.Create(APoints: longint; const ALayer: string);
 begin
   inherited Create;
   fLayer:=ALayer;
@@ -298,6 +390,22 @@ end;
 function TGDS2Reader.GetStructure(AIndex: longint): TStructure;
 begin
   result:=TStructure(fStructures[AIndex]);
+end;
+
+function TGDS2Reader.GetLayer(AIndex: longint): string;
+var
+  i: longint;
+begin
+  for i:=0 to high(fLayers) do
+    if fLayers[i].ID=AIndex then
+      exit(fLayers[i].Name);
+
+  result:=inttostr(AIndex);
+end;
+
+function TGDS2Reader.GetLayerID(const AName: string): longint;
+begin
+  result:=0;
 end;
 
 procedure TGDS2Reader.Consume(ASt: TStream; ARecord: byte);
@@ -383,7 +491,7 @@ begin
 
         pts:=fLeftData div 8;
 
-        poly:=TPolygon.Create(pts, layer);
+        poly:=TPolygon.Create(pts, GetLayer(layer));
 
         for i:=0 to pts-1 do
         begin
@@ -495,9 +603,10 @@ begin
   Consume(ASt, GDS_ENDLIB);
 end;
 
-procedure TGDS2Reader.LoadFromStream(AStream: TStream);
+procedure TGDS2Reader.LoadFromStream(AStream: TStream; const ALayers: TGDS2LayerMap);
 begin
   fStructures.Clear;
+  fLayers:=Copy(ALayers);
   Parse(AStream);
 end;
 
@@ -643,7 +752,7 @@ begin
           WriteRecord(AStream, GDS_BOUNDARY, GDS_DATA_None, 0);
 
           WriteRecord(AStream, GDS_LAYER, GDS_DATA_16, 2);
-          WriteWord(AStream, poly.Layer);
+          WriteWord(AStream, GetLayerID(poly.Layer));
 
           WriteRecord(AStream, GDS_DATATYPE, GDS_DATA_16, 2);
           WriteWord(AStream, 0);
