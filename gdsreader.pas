@@ -221,7 +221,7 @@ begin
   try
     s:=TFileStream.Create(AFilename, fmOpenRead);
     try
-      gd.LoadFromStream(s);
+      gd.LoadFromStream(s, map);
 
       for i:=0 to gd.Count-1 do
       begin

@@ -1,3 +1,8 @@
+{
+  Naive LEF parser
+
+  Should be updated to do real parsing at some point
+}
 unit lefreader;
 
 {$mode objfpc}{$H+}
@@ -9,6 +14,8 @@ uses
 
 type
   TLEFReader = class
+  private
+    function ValueToMeter(const AValue: double): double;
   public
     procedure LoadFromStream(AStream: TStream);
 
@@ -41,12 +48,21 @@ begin
   end;
 end;
 
+function TLEFReader.ValueToMeter(const AValue: double): double;
+begin
+  result:=AValue*1e-6;
+end;
+
 procedure TLEFReader.LoadFromStream(AStream: TStream);
 var
   st: TStringList;
-  i: longint;
+  i, layeridx: longint;
   s, name: string;
   layer: TLayer;
+  via: TVia;
+  x, y: double;
+  start, stop: TCoordinate;
+  cell: TCell;
 
   procedure Next;
   begin
@@ -57,6 +73,7 @@ var
   end;
 
 begin
+  layeridx:=0;
   st:=TStringList.Create;
   try
     st.LoadFromStream(AStream);
@@ -76,6 +93,8 @@ begin
         name:=trim(s);
 
         layer:=GetLayer(name);
+        layer.Index:=layeridx;
+        inc(layeridx);
 
         Next;
         while pos('END ', s)<>1 do
@@ -130,8 +149,47 @@ begin
       end
       else if pos('VIA ', s)=1 then
       begin
+        delete(s,1,4);
+        s:=trim(s);
+        name:=trim(Copy2SpaceDel(s));
+
+        via:=TVia.Create(name);
+        RegisterCell(via);
+
+        Next;
         while pos('END ', s)<>1 do
-          Next;
+        begin
+          if pos('LAYER ',s)=1 then
+          begin
+            delete(s,1,6);
+            s:=trim(s);
+
+            layer:=GetLayer(trim(Copy2SymbDel(s, ';')));
+
+            Next;
+          end
+          else if pos('RECT ',s)=1 then
+          begin
+            delete(s,1,5);
+            s:=trim(s);
+
+            x:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+            y:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+
+            start:=GetCoord(ValueToMeter(x),ValueToMeter(y));
+
+            x:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+            y:=strtofloat(trim(Copy2SymbDel(s, ';')));
+
+            stop:=GetCoord(ValueToMeter(x),ValueToMeter(y));
+
+            via.AddPoly(GetRect(layer, start, stop));
+
+            Next;
+          end
+          else
+            Next;
+        end;
         Next;
       end
       else if pos('VIARULE ', s)=1 then
@@ -148,31 +206,106 @@ begin
       end
       else if pos('MACRO ', s)=1 then
       begin
+        delete(s,1,5);
+        s:=trim(s);
+
+        cell:=FindCell(s);
+
         while pos('END ', s)<>1 do
         begin
-          if pos('PORT ', s)=1 then
+          if pos('FOREIGN ', s)=1 then
           begin
-            while pos('END ', s)<>1 do
-              Next;
             Next;
           end
           else if pos('PIN ', s)=1 then
           begin
-            if pos('PORT ', s)=1 then
-            begin
-              while pos('END ', s)<>1 do
-                Next;
-              Next;
-            end;
+            delete(s,1,4);
+            name:=trim(s);
+
+            Next;
 
             while pos('END ', s)<>1 do
-              Next;
+            begin
+              if pos('PORT', s)=1 then
+              begin
+                next;
+                while pos('END', s)<>1 do
+                begin
+                  if pos('LAYER ',s)=1 then
+                  begin
+                    delete(s,1,6);
+                    s:=trim(s);
+
+                    layer:=GetLayer(trim(Copy2SymbDel(s, ';')));
+
+                    Next;
+                  end
+                  else if pos('RECT ',s)=1 then
+                  begin
+                    delete(s,1,5);
+                    s:=trim(s);
+
+                    x:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+                    y:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+
+                    start:=GetCoord(ValueToMeter(x),ValueToMeter(y));
+
+                    x:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+                    y:=strtofloat(trim(Copy2SymbDel(s, ';')));
+
+                    stop:=GetCoord(ValueToMeter(x),ValueToMeter(y));
+
+                    cell.AddPin(name, GetRect(layer, start, stop));
+
+                    Next;
+                  end
+                  else
+                    Next;
+                end;
+                Next;
+              end
+              else
+                Next;
+            end;
+
             Next;
           end
-          else if pos('OBS ', s)=1 then
+          else if pos('OBS', s)=1 then
           begin
-            while pos('END ', s)<>1 do
-              Next;
+            next;
+            while pos('END', s)<>1 do
+            begin
+              if pos('LAYER ',s)=1 then
+              begin
+                delete(s,1,6);
+                s:=trim(s);
+
+                layer:=GetLayer(trim(Copy2SymbDel(s, ';')));
+
+                Next;
+              end
+              else if pos('RECT ',s)=1 then
+              begin
+                delete(s,1,5);
+                s:=trim(s);
+
+                x:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+                y:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+
+                start:=GetCoord(ValueToMeter(x),ValueToMeter(y));
+
+                x:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+                y:=strtofloat(trim(Copy2SymbDel(s, ';')));
+
+                stop:=GetCoord(ValueToMeter(x),ValueToMeter(y));
+
+                cell.AddObstruction(GetRect(layer, start, stop));
+
+                Next;
+              end
+              else
+                Next;
+            end;
             Next;
           end
           else
