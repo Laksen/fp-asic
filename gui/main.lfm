@@ -1,0 +1,195 @@
+object Form1: TForm1
+  Left = 565
+  Height = 628
+  Top = 1076
+  Width = 1028
+  Caption = 'FP-ASIC GUI'
+  ClientHeight = 628
+  ClientWidth = 1028
+  Menu = MainMenu1
+  LCLVersion = '1.7'
+  object PageControl1: TPageControl
+    Left = 0
+    Height = 607
+    Top = 0
+    Width = 200
+    ActivePage = TabSheet1
+    Align = alLeft
+    TabIndex = 0
+    TabOrder = 0
+    object TabSheet1: TTabSheet
+      Caption = 'Tech stack'
+      ClientHeight = 576
+      ClientWidth = 196
+      object tvTech: TTreeView
+        Left = 0
+        Height = 576
+        Top = 0
+        Width = 196
+        Align = alClient
+        PopupMenu = PopupMenu1
+        ReadOnly = True
+        RightClickSelect = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 0
+        OnSelectionChanged = tvTechSelectionChanged
+        Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoRightClickSelect, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
+        Items.Data = {
+          F9FFFFFF020002000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF030000000000
+          0000010500000046696C6573FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000
+          00000000000400000047445332FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000
+          000000000000030000004C4546FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000
+          00000000000004000000424C4946FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000
+          000000000000000500000043656C6C73
+        }
+      end
+    end
+    object TabSheet2: TTabSheet
+      Caption = 'Netlist'
+    end
+  end
+  object Splitter1: TSplitter
+    Left = 200
+    Height = 607
+    Top = 0
+    Width = 5
+  end
+  object StatusBar1: TStatusBar
+    Left = 0
+    Height = 21
+    Top = 607
+    Width = 1028
+    Panels = <>
+  end
+  object Panel1: TPanel
+    Left = 205
+    Height = 607
+    Top = 0
+    Width = 823
+    Align = alClient
+    BevelOuter = bvNone
+    ClientHeight = 607
+    ClientWidth = 823
+    TabOrder = 3
+    object oglView: TOpenGLControl
+      Left = 0
+      Height = 607
+      Top = 0
+      Width = 618
+      Align = alClient
+      AutoResizeViewport = True
+      OnMakeCurrent = oglViewMakeCurrent
+      OnMouseDown = oglViewMouseDown
+      OnMouseMove = oglViewMouseMove
+      OnMouseUp = oglViewMouseUp
+      OnMouseWheel = oglViewMouseWheel
+      OnPaint = oglViewPaint
+    end
+    object Splitter2: TSplitter
+      Left = 618
+      Height = 607
+      Top = 0
+      Width = 5
+      Align = alRight
+      ResizeAnchor = akRight
+    end
+    object LayerGrid: TDrawGrid
+      Left = 623
+      Height = 607
+      Top = 0
+      Width = 200
+      Align = alRight
+      ColCount = 0
+      Columns = <      
+        item
+          ButtonStyle = cbsCheckboxColumn
+          Title.Caption = 'Title'
+          Width = 20
+        end      
+        item
+          ButtonStyle = cbsButtonColumn
+          Title.Caption = 'Title'
+          Width = 32
+        end      
+        item
+          MaxSize = 2000
+          ReadOnly = True
+          SizePriority = 10
+          Title.Caption = 'Title'
+        end>
+      ExtendedSelect = False
+      FixedCols = 0
+      FixedRows = 0
+      GridLineWidth = 0
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goRowSelect, goSmoothScroll]
+      RowCount = 0
+      TabOrder = 2
+      OnCheckboxToggled = LayerGridCheckboxToggled
+      OnDrawCell = LayerGridDrawCell
+      OnButtonClick = LayerGridButtonClick
+      OnGetCheckboxState = LayerGridGetCheckboxState
+      OnSetCheckboxState = LayerGridSetCheckboxState
+    end
+  end
+  object MainMenu1: TMainMenu
+    left = 272
+    top = 16
+    object MenuItem1: TMenuItem
+      Caption = 'Project'
+      object NewProjectMenu: TMenuItem
+        Caption = 'New'
+      end
+      object SaveProjectMenu: TMenuItem
+        Caption = 'Save'
+      end
+      object SaveProjectAsMenu: TMenuItem
+        Caption = 'Save as...'
+      end
+      object LoadProjectMenu: TMenuItem
+        Caption = 'Load...'
+      end
+      object MenuItem7: TMenuItem
+        Caption = '-'
+      end
+      object ExitMenuItem: TMenuItem
+        Caption = 'Exit'
+        OnClick = ExitMenuItemClick
+      end
+    end
+    object MenuItem2: TMenuItem
+      Caption = 'Render'
+      object RenderLayersMenu: TMenuItem
+        Caption = 'Layers'
+        Checked = True
+        GroupIndex = 1
+        OnClick = RenderMenuClick
+      end
+      object RenderObsMenu: TMenuItem
+        Caption = 'Obstructions'
+        Checked = True
+        GroupIndex = 1
+        OnClick = RenderMenuClick
+      end
+      object RenderPinsMenu: TMenuItem
+        Caption = 'Pins'
+        Checked = True
+        GroupIndex = 1
+        OnClick = RenderMenuClick
+      end
+    end
+  end
+  object PopupMenu1: TPopupMenu
+    left = 63
+    top = 233
+    object AddFileItem: TMenuItem
+      Caption = 'Add File'
+      OnClick = AddFileItemClick
+    end
+  end
+  object OpenDialog1: TOpenDialog
+    Width = 1419
+    Height = 1320
+    left = 65508
+    top = 80
+  end
+end
