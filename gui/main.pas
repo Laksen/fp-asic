@@ -8,7 +8,8 @@ uses
   Classes, SysUtils, FileUtil, OpenGLContext, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls, ExtCtrls, ColorBox, Grids,
   gl,
   gdsreader, lefreader, blifreader,
-  cells, StdCtrls, Types;
+  cells,
+  StdCtrls, Types;
 
 type
   TDrawMode = (dmNone, dmCell, dmNetList);
@@ -24,6 +25,8 @@ type
     MainMenu1: TMainMenu;
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
+    Panel2: TPanel;
+    Panel3: TPanel;
     RenderLayersMenu: TMenuItem;
     RenderObsMenu: TMenuItem;
     RenderPinsMenu: TMenuItem;
@@ -44,6 +47,7 @@ type
     StatusBar1: TStatusBar;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
+    TrackBar1: TTrackBar;
     tvTech: TTreeView;
     procedure AddFileItemClick(Sender: TObject);
     procedure ExitMenuItemClick(Sender: TObject);
@@ -58,7 +62,9 @@ type
     procedure oglViewMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure oglViewMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure oglViewPaint(Sender: TObject);
+    procedure PageControl1Change(Sender: TObject);
     procedure RenderMenuClick(Sender: TObject);
+    procedure TrackBar1Change(Sender: TObject);
     procedure tvTechSelectionChanged(Sender: TObject);
   private
     function PosToWorld(const APos: TPoint): TCoordinate;
@@ -74,7 +80,8 @@ type
 
     CurrentCell: TCell;
 
-    procedure DrawCell;
+    procedure DrawCell(ACell: TCell; ALocation: TCoordinate);
+    procedure DrawNetlist;
     procedure ResetZoom;
 
     procedure DrawPoly(const APoly: TPoly);
@@ -91,9 +98,6 @@ type
     procedure EnsureLayerInfo(ALayer: TLayer);
     function GetLayerInfoIdx(ALayer: TLayer): longint;
     function GetLayerInfo(ALayer: TLayer): TLayerInfo;
-    { private declarations }
-  public
-    { public declarations }
   end;
 
 var
@@ -102,7 +106,7 @@ var
 implementation
 
 uses
-  math;
+  math, chiplayout;
 
 {$R *.lfm}
 
@@ -236,15 +240,35 @@ begin
         glClear(GL_COLOR_BUFFER_BIT);
       end;
     dmCell:
-      DrawCell;
+      DrawCell(CurrentCell, Coord(0,0));
+    dmNetList:
+      DrawNetlist;
   end;
 
   oglView.SwapBuffers;
 end;
 
+procedure TForm1.PageControl1Change(Sender: TObject);
+begin
+  if PageControl1.ActivePageIndex=0 then
+    tvTechSelectionChanged(sender)
+  else
+  begin
+    DrawMode:=dmNetList;
+    oglView.Refresh;
+
+    ResetZoom;
+  end;
+end;
+
 procedure TForm1.RenderMenuClick(Sender: TObject);
 begin
   TMenuItem(sender).Checked:=not TMenuItem(sender).Checked;
+  oglView.Repaint;
+end;
+
+procedure TForm1.TrackBar1Change(Sender: TObject);
+begin
   oglView.Repaint;
 end;
 
@@ -272,18 +296,19 @@ begin
   result:=Coord(round(APos.x*rScale+Offset.X), round(APos.Y*rScale+Offset.Y));
 end;
 
-procedure TForm1.DrawCell;
+procedure TForm1.DrawCell(ACell: TCell; ALocation: TCoordinate);
 var
   i, i2, layer: longint;
 begin
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
-  glTranslated(0,0,-20);
+  glTranslated(0,0,-50);
   glScaled(1/Scale,1/scale,1);
   glTranslated(Offset.x,offset.y,0);
 
   glTranslated(mouse.x,mouse.y,0);
+  glTranslated(ALocation.x,ALocation.y,0);
 
   glenable(GL_BLEND);
 
@@ -291,24 +316,34 @@ begin
 
   for layer:=0 to high(Layers) do
   begin
+    if not layers[layer].Visible then continue;
+
     if RenderLayersMenu.Checked then
-      for i:=0 to CurrentCell.PolygonCount-1 do
-        if CurrentCell.Polygons[i].Layer=layers[layer].Layer then
-          DrawPoly(CurrentCell.Polygons[i]);
+      for i:=0 to ACell.PolygonCount-1 do
+        if ACell.Polygons[i].Layer=layers[layer].Layer then
+          DrawPoly(ACell.Polygons[i]);
 
     if RenderObsMenu.Checked then
-      for i:=0 to CurrentCell.ObstructionCount-1 do
-        if CurrentCell.Obstructions[i].Layer=layers[layer].Layer then
-          DrawPoly(CurrentCell.Obstructions[i]);
+      for i:=0 to ACell.ObstructionCount-1 do
+        if ACell.Obstructions[i].Layer=layers[layer].Layer then
+          DrawPoly(ACell.Obstructions[i]);
 
     if RenderPinsMenu.Checked then
-      for i:=0 to CurrentCell.PinsCount-1 do
-        for i2:=0 to high(CurrentCell.Pins[i].Polygons) do
-           if CurrentCell.Pins[i].Polygons[i2].Layer=layers[layer].Layer then
-             DrawPoly(CurrentCell.Pins[i].Polygons[i2]);
+      for i:=0 to ACell.PinsCount-1 do
+        for i2:=0 to high(ACell.Pins[i].Polygons) do
+           if ACell.Pins[i].Polygons[i2].Layer=layers[layer].Layer then
+             DrawPoly(ACell.Pins[i].Polygons[i2]);
   end;
 
   gldisable(GL_BLEND);
+end;
+
+procedure TForm1.DrawNetlist;
+var
+  i: longint;
+begin
+  for i:=0 to Layout.Count-1 do
+    DrawCell(Layout.Instance[i].Cell, Layout.Instance[i].Location);
 end;
 
 procedure TForm1.ResetZoom;
@@ -381,13 +416,13 @@ begin
         MinMax(mi,ta,mi,ma);
       end;
     end;
+
+    dx:=ma.x-mi.x;
+    dy:=ma.y-mi.y;
+
+    Scale:=max(dx div oglView.ClientWidth,dy div oglView.ClientHeight);
+    Offset:=Coord(0,0);
   end;
-
-  dx:=ma.x-mi.x;
-  dy:=ma.y-mi.y;
-
-  Scale:=max(dx div oglView.ClientWidth,dy div oglView.ClientHeight);
-  Offset:=Coord(0,0);
 end;
 
 procedure TForm1.DrawPoly(const APoly: TPoly);
@@ -399,7 +434,7 @@ begin
 
   if not li.Visible then exit;
 
-  glColor4ub(Red(li.Color), green(li.Color), blue(li.Color), 128);
+  glColor4ub(Red(li.Color), green(li.Color), blue(li.Color), TrackBar1.Position);
 
   glBegin(GL_POLYGON);
 
@@ -483,7 +518,8 @@ begin
   else
     exit;
 
-  //LoadBlif(FileName);
+  LoadBlif(FileName);
+  LayoutRows;
 
   tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[2], ExtractRelativepath(GetCurrentDir, Filename));
   tvTech.Items.TopLvlItems[0].items[2].Expand(true);

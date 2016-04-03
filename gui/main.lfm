@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 565
+  Left = 1237
   Height = 628
-  Top = 1076
+  Top = 1252
   Width = 1028
   Caption = 'FP-ASIC GUI'
   ClientHeight = 628
@@ -17,6 +17,7 @@ object Form1: TForm1
     Align = alLeft
     TabIndex = 0
     TabOrder = 0
+    OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Caption = 'Tech stack'
       ClientHeight = 576
@@ -75,7 +76,7 @@ object Form1: TForm1
       Left = 0
       Height = 607
       Top = 0
-      Width = 618
+      Width = 648
       Align = alClient
       AutoResizeViewport = True
       OnMakeCurrent = oglViewMakeCurrent
@@ -86,49 +87,82 @@ object Form1: TForm1
       OnPaint = oglViewPaint
     end
     object Splitter2: TSplitter
-      Left = 618
+      Left = 648
       Height = 607
       Top = 0
       Width = 5
       Align = alRight
       ResizeAnchor = akRight
     end
-    object LayerGrid: TDrawGrid
-      Left = 623
+    object Panel2: TPanel
+      Left = 653
       Height = 607
       Top = 0
-      Width = 200
+      Width = 170
       Align = alRight
-      ColCount = 0
-      Columns = <      
-        item
-          ButtonStyle = cbsCheckboxColumn
-          Title.Caption = 'Title'
-          Width = 20
-        end      
-        item
-          ButtonStyle = cbsButtonColumn
-          Title.Caption = 'Title'
-          Width = 32
-        end      
-        item
-          MaxSize = 2000
-          ReadOnly = True
-          SizePriority = 10
-          Title.Caption = 'Title'
-        end>
-      ExtendedSelect = False
-      FixedCols = 0
-      FixedRows = 0
-      GridLineWidth = 0
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goRowSelect, goSmoothScroll]
-      RowCount = 0
+      BevelOuter = bvNone
+      ClientHeight = 607
+      ClientWidth = 170
       TabOrder = 2
-      OnCheckboxToggled = LayerGridCheckboxToggled
-      OnDrawCell = LayerGridDrawCell
-      OnButtonClick = LayerGridButtonClick
-      OnGetCheckboxState = LayerGridGetCheckboxState
-      OnSetCheckboxState = LayerGridSetCheckboxState
+      object LayerGrid: TDrawGrid
+        Left = 0
+        Height = 557
+        Top = 0
+        Width = 170
+        Align = alClient
+        ColCount = 0
+        Columns = <        
+          item
+            ButtonStyle = cbsCheckboxColumn
+            Title.Caption = 'Title'
+            Width = 20
+          end        
+          item
+            ButtonStyle = cbsButtonColumn
+            Title.Caption = 'Title'
+            Width = 32
+          end        
+          item
+            MaxSize = 2000
+            ReadOnly = True
+            SizePriority = 10
+            Title.Caption = 'Title'
+          end>
+        ExtendedSelect = False
+        FixedCols = 0
+        FixedRows = 0
+        GridLineWidth = 0
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goRowSelect, goSmoothScroll]
+        RowCount = 0
+        TabOrder = 0
+        OnCheckboxToggled = LayerGridCheckboxToggled
+        OnDrawCell = LayerGridDrawCell
+        OnButtonClick = LayerGridButtonClick
+        OnGetCheckboxState = LayerGridGetCheckboxState
+        OnSetCheckboxState = LayerGridSetCheckboxState
+      end
+      object Panel3: TPanel
+        Left = 0
+        Height = 50
+        Top = 557
+        Width = 170
+        Align = alBottom
+        BevelOuter = bvNone
+        ClientHeight = 50
+        ClientWidth = 170
+        TabOrder = 1
+        object TrackBar1: TTrackBar
+          Left = 0
+          Height = 50
+          Top = 0
+          Width = 170
+          Max = 255
+          OnChange = TrackBar1Change
+          Position = 128
+          Align = alClient
+          TabOrder = 0
+        end
+      end
     end
   end
   object MainMenu1: TMainMenu
