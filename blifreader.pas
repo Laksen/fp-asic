@@ -63,7 +63,54 @@ type
     property GNDName: string read FGNDName write FGNDName;
   end;
 
+procedure LoadBlif(const AFilename: string);
+
 implementation
+
+uses
+  chiplayout, cells;
+
+procedure LoadBlif(const AFilename: string);
+var
+  br: TBlifReader;
+  st: TFileStream;
+  i, i2: longint;
+  sc: TSubCircuit;
+  cell: TCellInst;
+begin
+  st:=TFileStream.Create(AFilename, fmOpenRead);
+  try
+    br:=TBlifReader.Create;
+    try
+      br.LoadFromStream(st);
+
+      for i:=0 to br.Inputs.Count-1 do
+        Layout.AddNet(br.Inputs[i], ncInput);
+
+      for i:=0 to br.Outputs.Count-1 do
+        Layout.AddNet(br.Outputs[i], ncOutput);
+
+      for i:=0 to br.Nets.Count-1 do
+        Layout.AddNet(br.Nets[i], ncNet);
+
+      for i:=0 to br.Count-1 do
+      begin
+        sc:=br.SubCircuit[i];
+
+        cell:=Layout.AddCell('Cell'+inttostr(i), FindCell(sc.Name));
+
+        for i2:=0 to sc.Count-1 do
+        begin
+          cell.Connect(sc.Connection[i2].Pin, Layout.FindNet(sc.Connection[i2].Net));
+        end;
+      end;
+    finally
+      br.Free;
+    end;
+  finally
+    st.Free;
+  end;
+end;
 
 function TBlifReader.GetCount: longint;
 begin

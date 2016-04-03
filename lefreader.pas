@@ -57,7 +57,7 @@ procedure TLEFReader.LoadFromStream(AStream: TStream);
 var
   st: TStringList;
   i, layeridx: longint;
-  s, name: string;
+  s, name, cls: string;
   layer: TLayer;
   via: TVia;
   x, y: double;
@@ -198,10 +198,36 @@ begin
           Next;
         Next;
       end
-      else if pos('SITE ', s)=1 then
+      else if pos('SITE', s)=1 then
       begin
+        cls:='';
         while pos('END ', s)<>1 do
-          Next;
+        begin
+          if pos('CLASS',s)=1 then
+          begin
+            delete(s,1,6); s:=trim(s);
+
+            cls:=trim(Copy2SymbDel(s,';')); s:=trim(s);
+
+            next;
+          end
+          else if pos('SIZE',s)=1 then
+          begin
+            Delete(s,1,5);
+            s:=trim(s);
+
+            x:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+            delete(s,1,2); s:=trim(s);
+            y:=strtofloat(trim(Copy2SymbDel(s,';'))); s:=trim(s);
+
+            if cls = 'CORE' then
+              CoreSize:=GetCoord(ValueToMeter(x),ValueToMeter(y));
+
+            next;
+          end
+          else
+            Next;
+        end;
         Next;
       end
       else if pos('MACRO ', s)=1 then
@@ -215,6 +241,23 @@ begin
         begin
           if pos('FOREIGN ', s)=1 then
           begin
+            Next;
+          end
+          else if pos('SITE ', s)=1 then
+          begin
+            Next;
+          end
+          else if pos('SIZE ', s)=1 then
+          begin
+            Delete(s,1,5);
+            s:=trim(s);
+
+            x:=strtofloat(Copy2SpaceDel(s)); s:=trim(s);
+            delete(s,1,2); s:=trim(s);
+            y:=strtofloat(trim(Copy2SymbDel(s,';'))); s:=trim(s);
+
+            cell.Size:=GetCoord(ValueToMeter(x),ValueToMeter(y));
+
             Next;
           end
           else if pos('PIN ', s)=1 then

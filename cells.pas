@@ -9,6 +9,7 @@ uses
 
 type
   TUnit = int64;
+  TArea = TUnit;
 
   TCoordinate = record
     X,Y: int64;
@@ -46,12 +47,19 @@ type
     Polygons: array of TPoly;
   end;
 
+  TCellClass = (ccNone,
+                ccPad, ccCore, ccBlock, ccCover, ccRing,
+                ccEndCapTL, ccEndCapTR, ccEndCapBL, ccEndCapBR);
+
   TCell = class
   private
+    fCellClass: TCellClass;
     fName: string;
     fPinsDefined: boolean;
     fPolys, fObs: array of TPoly;
     fPins: array of TPin;
+    fSize: TCoordinate;
+    function GetArea: TArea;
     function GetObstructionCount: longint;
     function GetObstructions(AIndex: longint): TPoly;
     function GetPins(AIndex: longint): TPin;
@@ -67,6 +75,9 @@ type
 
     property Name: string read fName;
     property PinsDefined: boolean read fPinsDefined;
+    property Area: TArea read GetArea;
+    property Size: TCoordinate read fSize write fSize;
+    property CellClass: TCellClass read fCellClass write fCellClass;
 
     property PolygonCount: longint read GetPolygonCount;
     property Polygons[AIndex: longint]: TPoly read GetPolygons;
@@ -80,6 +91,11 @@ type
 
   TVia = class(TCell)
   end;
+
+var
+  CoreSize: TCoordinate;
+
+function UnitToMeters(AValue: TUnit): double;
 
 function Coord(const AX,AY: TUnit): TCoordinate;
 function GetCoord(const AX,AY: double): TCoordinate;
@@ -113,6 +129,11 @@ var
 function MeterToUnit(AValue: double): TUnit;
 begin
   result:=round(UnitsPerMeter*AValue);
+end;
+
+function UnitToMeters(AValue: TUnit): double;
+begin
+  result:=AValue/UnitsPerMeter;
 end;
 
 function Coord(const AX, AY: TUnit): TCoordinate;
@@ -241,6 +262,11 @@ end;
 function TCell.GetObstructionCount: longint;
 begin
   result:=Length(fObs);
+end;
+
+function TCell.GetArea: TArea;
+begin
+  result:=fSize.X*fSize.y;
 end;
 
 function TCell.GetObstructions(AIndex: longint): TPoly;
