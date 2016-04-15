@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, contnrs, strutils,
-  math;
+  math, geometry;
 
 type
   TXY = record
@@ -210,6 +210,7 @@ var
   poly: TPolygon;
   layer: TLayer;
   p: TPoly;
+  Points: array of TCoordinate;
 begin
   if (AMapFilename<>'') and
      FileExists(AMapFilename) then
@@ -238,9 +239,11 @@ begin
           layer:=GetLayer(poly.Layer);
 
           p.Layer:=layer;
-          setlength(p.Points, poly.Count);
+          setlength(Points, poly.Count);
           for i3:=0 to poly.Count-1 do
-            p.points[i3]:=GetCoord(poly[i3].X, poly[i3].y);
+            points[i3]:=GetCoord(poly[i3].X, poly[i3].y);
+
+          p.Poly:=GetPolygon(Points);
 
           c.AddPoly(p);
         end;

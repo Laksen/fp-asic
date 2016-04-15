@@ -6,11 +6,12 @@ program gdstest;
 uses
   cmem,
   sysutils,classes,
-  gdsreader, math,
+  gdsreader,lefreader,blifreader,
+  math,
   sdl,
   sdl_gfx;
 
-const
+{const
   w = 800;
   h = 600;
 
@@ -125,25 +126,12 @@ begin
   WaitWindow;
 
   SDL_Quit;
-end;
+end;}
 
 begin
-  gd:=TGDS2Reader.Create();
+  LoadGDS('osu035/osu035_pads.gds2', 'osu035/streamin.map');
+  LoadGDS('osu035/osu035_stdcells.gds2', 'osu035/streamin.map');
 
- // s:=TFileStream.Create('osu035_stdcells.gds2', fmopenread);
-  s:=TFileStream.Create('test.gds2', fmopenread);
-  gd.LoadFromStream(s);
-  s.free;
-
-  {s:=TFileStream.Create('test.gds2', fmOpenWrite or fmCreate);
-  gd.SaveToStream(s);
-  s.free;}
-
-  for i:=0 to gd.count-1 do
-    writeln(i,': ',gd.Structure[i].Name);
-
-  plot;
-
-  gd.free;
+  LoadLEF('osu035/osu035_stdcells.lef');
 end.
 

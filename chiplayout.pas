@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, contnrs,
-  cells;
+  cells, geometry;
 
 type
   TNetClass = (ncNet, ncInput, ncOutput);

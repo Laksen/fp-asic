@@ -5,16 +5,9 @@ unit cells;
 interface
 
 uses
-  Classes, SysUtils, math;
+  Classes, SysUtils, math, geometry;
 
 type
-  TUnit = int64;
-  TArea = TUnit;
-
-  TCoordinate = record
-    X,Y: int64;
-  end;
-
   TLayerType = (ltUnknown, ltCut, ltRouting, ltPoly);
 
   TLayer = class
@@ -38,7 +31,7 @@ type
   end;
 
   TPoly = record
-    Points: array of TCoordinate;
+    Poly: TPolygon;
     Layer: TLayer;
   end;
 
@@ -95,15 +88,7 @@ type
 var
   CoreSize: TCoordinate;
 
-function UnitToMeters(AValue: TUnit): double;
-
-function Coord(const AX,AY: TUnit): TCoordinate;
-function GetCoord(const AX,AY: double): TCoordinate;
-function Sub(const A,B: TCoordinate): TCoordinate;
-function GetRect(ALayer: TLayer; const AStart, AStop: TCoordinate): TPoly;
-
-procedure MinMax(const A,B: TCoordinate; out AMin, AMax: TCoordinate);
-procedure MinMax(const APoly: TPoly; out AMin, AMax: TCoordinate);
+function GetLayerRect(ALayer: TLayer; const AStart, AStop: TCoordinate): TPoly;
 
 function GetLayerCount: longint;
 function GetLayer(const AIndex: longint): TLayer;
@@ -119,73 +104,14 @@ procedure RegisterCell(ACell: TCell);
 
 implementation
 
-const
-  UnitsPerMeter = 10e10;
-
 var
   Layers,
   CellDB: TStringList;
 
-function MeterToUnit(AValue: double): TUnit;
-begin
-  result:=round(UnitsPerMeter*AValue);
-end;
-
-function UnitToMeters(AValue: TUnit): double;
-begin
-  result:=AValue/UnitsPerMeter;
-end;
-
-function Coord(const AX, AY: TUnit): TCoordinate;
-begin
-  result.X:=AX;
-  result.Y:=AY;
-end;
-
-function GetCoord(const AX, AY: double): TCoordinate;
-begin
-  result.X:=MeterToUnit(AX);
-  result.Y:=MeterToUnit(AY);
-end;
-
-function Sub(const A, B: TCoordinate): TCoordinate;
-begin
-  result.x:=a.x-b.x;
-  result.y:=a.y-b.y;
-end;
-
-function GetRect(ALayer: TLayer; const AStart, AStop: TCoordinate): TPoly;
+function GetLayerRect(ALayer: TLayer; const AStart, AStop: TCoordinate): TPoly;
 begin
   result.Layer:=ALayer;
-  setlength(result.Points,5);
-  result.Points[0]:=AStart;
-  result.Points[1]:=Coord(AStop.X, AStart.Y);
-  result.Points[2]:=AStop;
-  result.Points[3]:=Coord(AStart.X, AStop.Y);
-  result.Points[4]:=AStart;
-end;
-
-procedure MinMax(const A, B: TCoordinate; out AMin, AMax: TCoordinate);
-begin
-  AMin.x:=Min(a.x, b.x);
-  AMin.y:=Min(a.y, b.y);
-
-  AMax.x:=Max(a.x, b.x);
-  AMax.y:=Max(a.y, b.y);
-end;
-
-procedure MinMax(const APoly: TPoly; out AMin, AMax: TCoordinate);
-var
-  i: longint;
-begin
-  AMin:=APoly.Points[0];
-  AMax:=AMin;
-
-  for i:=1 to high(APoly.Points) do
-  begin
-    MinMax(amin, APoly.Points[i], AMin, AMax);
-    MinMax(amax, APoly.Points[i], AMin, AMax);
-  end;
+  Result.Poly:=GetRect(AStart, AStop);
 end;
 
 function GetLayerCount: longint;
@@ -302,15 +228,13 @@ end;
 procedure TCell.AddPoly(const APoly: TPoly);
 begin
   setlength(fPolys, high(fPolys)+2);
-  fPolys[high(fPolys)].Layer:=APoly.Layer;
-  fPolys[high(fPolys)].Points:=Copy(APoly.Points);
+  fPolys[high(fPolys)]:=APoly;
 end;
 
 procedure TCell.AddObstruction(const AObs: TPoly);
 begin
   setlength(fObs, high(fObs)+2);
-  fObs[high(fObs)].Layer:=AObs.Layer;
-  fObs[high(fObs)].Points:=Copy(AObs.Points);
+  fObs[high(fObs)]:=AObs;
 end;
 
 procedure TCell.AddPin(const AName: string; const APoly: TPoly);
@@ -335,8 +259,7 @@ begin
   end;
 
   setlength(fPins[x].Polygons, high(fPins[x].Polygons)+2);
-  fPins[x].Polygons[high(fPins[x].Polygons)].Points:=Copy(APoly.Points);
-  fPins[x].Polygons[high(fPins[x].Polygons)].Layer:=APoly.Layer;
+  fPins[x].Polygons[high(fPins[x].Polygons)]:=APoly;
 end;
 
 initialization

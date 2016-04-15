@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FileUtil, OpenGLContext, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls, ExtCtrls, ColorBox, Grids,
   gl,
   gdsreader, lefreader, blifreader,
-  cells,
+  cells, geometry, drc,
   StdCtrls, Types;
 
 type
@@ -178,7 +178,7 @@ procedure TForm1.oglViewMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Int
 begin
   if IsDragging then
   begin
-    Mouse:=Sub(PosToWorld(Point(x,y)), MouseStart);
+    Mouse:=(PosToWorld(Point(x,y))-MouseStart);
     oglView.Repaint;
   end;
 end;
@@ -187,10 +187,9 @@ procedure TForm1.oglViewMouseUp(Sender: TObject; Button: TMouseButton; Shift: TS
 begin
   if IsDragging then
   begin
-    Mouse:=Sub(PosToWorld(Point(x,y)), MouseStart);
+    Mouse:=(PosToWorld(Point(x,y))-MouseStart);
 
-    Offset.x:=Offset.x+Mouse.x;
-    Offset.y:=Offset.y+Mouse.y;
+    Offset:=offset+Mouse;
 
     Mouse:=Coord(0,0);
     oglView.Repaint;
@@ -214,7 +213,7 @@ begin
 
   np:=PosToWorld(MousePos);
 
-  offset:=sub(offset, sub(cp,np));
+  offset:=(offset-(cp-np));
 
   oglView.Repaint;
 end;
@@ -364,11 +363,11 @@ begin
     if CurrentCell.PolygonCount>0 then
     begin
       HasFirst:=true;
-      MinMax(CurrentCell.Polygons[0], mi, ma);
+      MinMax(CurrentCell.Polygons[0].Poly, mi, ma);
 
       for i:=1 to CurrentCell.PolygonCount-1 do
       begin
-        MinMax(CurrentCell.Polygons[i], ti, ta);
+        MinMax(CurrentCell.Polygons[i].Poly, ti, ta);
 
         MinMax(mi,ti,mi,ma);
         MinMax(mi,ta,mi,ma);
@@ -382,7 +381,7 @@ begin
       if not HasFirst then
       begin
         HasFirst:=true;
-        MinMax(CurrentCell.Pins[i2].Polygons[0], mi, ma);
+        MinMax(CurrentCell.Pins[i2].Polygons[0].Poly, mi, ma);
         Start:=1;
       end
       else
@@ -390,7 +389,7 @@ begin
 
       for i:=start to high(CurrentCell.Pins[i2].Polygons) do
       begin
-        MinMax(CurrentCell.Pins[i2].Polygons[i], ti, ta);
+        MinMax(CurrentCell.Pins[i2].Polygons[i].Poly, ti, ta);
 
         MinMax(mi,ti,mi,ma);
         MinMax(mi,ta,mi,ma);
@@ -402,7 +401,7 @@ begin
       if not HasFirst then
       begin
         HasFirst:=true;
-        MinMax(CurrentCell.Obstructions[0], mi, ma);
+        MinMax(CurrentCell.Obstructions[0].Poly, mi, ma);
         Start:=1;
       end
       else
@@ -410,7 +409,7 @@ begin
 
       for i:=start to CurrentCell.ObstructionCount-1 do
       begin
-        MinMax(CurrentCell.Obstructions[i], ti, ta);
+        MinMax(CurrentCell.Obstructions[i].Poly, ti, ta);
 
         MinMax(mi,ti,mi,ma);
         MinMax(mi,ta,mi,ma);
@@ -438,8 +437,8 @@ begin
 
   glBegin(GL_POLYGON);
 
-  for i:=0 to high(APoly.Points) do
-    glVertex3d(APoly.Points[i].X, APoly.Points[i].y, GetLayerInfoIdx(APoly.Layer));
+  for i:=0 to high(APoly.Poly.Points) do
+    glVertex3d(APoly.Poly.Points[i].X, APoly.Poly.Points[i].y, GetLayerInfoIdx(APoly.Layer));
 
   glEnd();
 end;

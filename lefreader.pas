@@ -28,7 +28,7 @@ procedure LoadLEF(const AFilename: string);
 implementation
 
 uses
-  cells;
+  cells, geometry;
 
 procedure LoadLEF(const AFilename: string);
 var
@@ -183,7 +183,7 @@ begin
 
             stop:=GetCoord(ValueToMeter(x),ValueToMeter(y));
 
-            via.AddPoly(GetRect(layer, start, stop));
+            via.AddPoly(GetLayerRect(layer, start, stop));
 
             Next;
           end
@@ -298,7 +298,7 @@ begin
 
                     stop:=GetCoord(ValueToMeter(x),ValueToMeter(y));
 
-                    cell.AddPin(name, GetRect(layer, start, stop));
+                    cell.AddPin(name, GetLayerRect(layer, start, stop));
 
                     Next;
                   end
@@ -342,7 +342,7 @@ begin
 
                 stop:=GetCoord(ValueToMeter(x),ValueToMeter(y));
 
-                cell.AddObstruction(GetRect(layer, start, stop));
+                cell.AddObstruction(GetLayerRect(layer, start, stop));
 
                 Next;
               end
