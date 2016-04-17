@@ -222,13 +222,35 @@ begin
 end;
 
 function NearestPoint(const A: TPolygon; const B: TCoordinate; ACornerSeparation: TUnit): TCoordinate;
+var
+  res: TCoordinate;
+  nd, bd: TUnit;
+  i: longint;
 begin
+  if Inside(a, b) then
+    exit(b)
+  else
+  begin
+    result:=NearestPoint(a.Points[0], a.Points[1], b, ACornerSeparation);
+    bd:=DistanceSqr(result,b);
 
+    for i:=1 to high(a.Points)-1 do
+    begin
+      res:=NearestPoint(a.Points[i], a.Points[i+1], b, ACornerSeparation);
+      nd:=DistanceSqr(res,b);
+
+      if nd<bd then
+      begin
+        result:=res;
+        bd:=nd;
+      end;
+    end;
+  end;
 end;
 
 function NearestPoint(const AStart, AStop: TCoordinate; const B: TCoordinate; ACornerSeparation: TUnit): TCoordinate;
 begin
-
+//  if DistanceSqr(AStart,AStop)
 end;
 
 end.
