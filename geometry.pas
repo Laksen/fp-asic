@@ -39,10 +39,16 @@ operator =(const A,B: TCoordinate): boolean;
 operator +(const A,B: TCoordinate): TCoordinate;
 operator -(const A,B: TCoordinate): TCoordinate;
 operator -(const A: TCoordinate): TCoordinate;
+operator*(const A: TCoordinate; B: double): TCoordinate;
 operator *(const A,B: TCoordinate): TUnit;
+operator div(const A: TCoordinate; B: longint): TCoordinate;
+operator /(const A: TCoordinate; B: TUnit): TCoordinate;
+
+function Normalize(const A: TCoordinate): TCoordinate;
 
 function Inside(const A: TPolygon; const B: TCoordinate): boolean;
 function Overlap(const A, B: TPolygon): boolean;
+function GetOverlap(const A, B: TPolygon): TPolygon;
 
 function Distance(const A,B: TCoordinate): TUnit;
 function DistanceSqr(const A,B: TCoordinate): TUnit;
@@ -173,9 +179,34 @@ begin
   result.y:=-a.y;
 end;
 
+operator*(const A: TCoordinate; B: double): TCoordinate;
+begin
+  result.X:=round(A.X*B);
+  result.Y:=round(A.Y*B);
+end;
+
 operator*(const A, B: TCoordinate): TUnit;
 begin
   result:=Round((a.x*MetersPerUnit*b.x)+(a.y*MetersPerUnit*b.y));
+end;
+
+operator div(const A: TCoordinate; B: longint): TCoordinate;
+begin
+  result.X:=A.X div B;
+  result.Y:=A.Y div B;
+end;
+
+operator/(const A: TCoordinate; B: TUnit): TCoordinate;
+var
+  x: double;
+begin
+  if B=0 then
+    result:=A
+  else
+  begin
+    x:=1/(B*MetersPerUnit);
+    result:=Coord(Round(A.X*x), Round(A.Y*x));
+  end;
 end;
 
 function OverlapRects(const A, B: TPolygon): boolean;
@@ -183,6 +214,18 @@ begin
   result:=
     (a.Start.X<=b.Stop.x) and (a.Start.y<=b.Stop.y) and
     (a.stop.x>=b.start.x) and (a.Stop.y>=b.Start.y);
+end;
+
+function Normalize(const A: TCoordinate): TCoordinate;
+var
+  l: TUnit;
+begin
+  l:=Distance(A,Coord(0,0));
+
+  if l=0 then
+    exit(a)
+  else
+    exit(a/l);
 end;
 
 function Inside(const A: TPolygon; const B: TCoordinate): boolean;
@@ -211,14 +254,35 @@ begin
   end;
 end;
 
-function Distance(const A, B: TCoordinate): TUnit;
+function GetOverlap(const A, B: TPolygon): TPolygon;
+var
+  x, y: TCoordinate;
 begin
-  result:=Round(Sqrt(A*B));
+  if Overlap(a,b) then
+  begin
+    x:=Coord(max(a.Start.X, b.Start.x), max(a.Start.y, b.Start.y));
+    y:=Coord(min(a.Stop.X, b.Stop.x), min(a.Stop.y, b.Stop.y));
+
+    result:=GetRect(x,y);
+  end
+  else
+    result:=GetRect(Coord(0,0), Coord(0,0));
+end;
+
+function Distance(const A, B: TCoordinate): TUnit;
+var
+  s: TCoordinate;
+begin
+  s:=(b-a);
+  result:=MeterToUnit(Sqrt(UnitToMeters(S*S)));
 end;
 
 function DistanceSqr(const A, B: TCoordinate): TUnit;
+var
+  s: TCoordinate;
 begin
-  result:=A*B;
+  s:=(b-a);
+  result:=s*s;
 end;
 
 function NearestPoint(const A: TPolygon; const B: TCoordinate; ACornerSeparation: TUnit): TCoordinate;
@@ -249,8 +313,27 @@ begin
 end;
 
 function NearestPoint(const AStart, AStop: TCoordinate; const B: TCoordinate; ACornerSeparation: TUnit): TCoordinate;
+var
+  s: TCoordinate;
+  d,l, cs: double;
 begin
-//  if DistanceSqr(AStart,AStop)
+  if Distance(AStart,AStop)<=(ACornerSeparation*2) then
+    result:=((AStop-AStart) div 2)+AStart
+  else
+  begin
+    s:=Normalize(AStop-AStart);
+    d:=UnitToMeters(distance(AStop,AStart));
+    cs:=UnitToMeters(ACornerSeparation);
+
+    l:=((b-AStart)*s)/(s*s);
+
+    if l<cs then
+      l:=cs
+    else if l>d-cs then
+      l:=d-cs;
+
+    result:=AStart+s*l;
+  end;
 end;
 
 end.

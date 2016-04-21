@@ -93,6 +93,7 @@ function GetLayerRect(ALayer: TLayer; const AStart, AStop: TCoordinate): TPoly;
 function GetLayerCount: longint;
 function GetLayer(const AIndex: longint): TLayer;
 function GetLayer(const AName: string): TLayer;
+function GetRoutingLayerCount: longint;
 
 function HasCell(const AName: string): boolean;
 function FindCell(const AName: string): TCell;
@@ -136,6 +137,17 @@ begin
     result.Name:=AName;
     Layers.AddObject(AName, result);
   end;
+end;
+
+function GetRoutingLayerCount: longint;
+var
+  i: longint;
+begin
+  result:=0;
+
+  for i:=0 to Layers.Count-1 do
+    if TLayer(Layers.Objects[i]).LayerType=ltRouting then
+      inc(result);
 end;
 
 function HasCell(const AName: string): boolean;

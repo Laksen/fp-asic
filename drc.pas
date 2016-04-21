@@ -8,13 +8,13 @@ uses
   Classes, SysUtils,
   cells, chiplayout;
 
-procedure CheckDRC;
+function CheckDRC: boolean;
 
 implementation
 
-procedure CheckDRC;
+function CheckDRC: boolean;
 begin
-
+  result:=true;
 end;
 
 end.

@@ -13,6 +13,7 @@ type
     procedure TestUnits;
     procedure TestCoordinates;
     procedure TestSimple;
+    procedure TestDistance;
   end;
 
 implementation
@@ -107,6 +108,31 @@ begin
   b:=GetRect(GetCoord(-1,-1), GetCoord(101,101));
   AssertEquals(True, Overlap(b,c));
   AssertEquals(True, Overlap(c,b));
+end;
+
+procedure TGeoTest.TestDistance;
+var
+  a, b, c: TCoordinate;
+  r: TPolygon;
+begin
+  a:=GetCoord(10,10);
+  b:=GetCoord(20,10);
+
+  AssertEquals(10, UnitToMeters(Distance(a,b)));
+
+  r:=GetRect(GetCoord(10,10), GetCoord(20,20));
+
+  c:=NearestPoint(r,a,0);
+  AssertEquals(10, UnitToMeters(c.X));
+  AssertEquals(10, UnitToMeters(c.Y));
+
+  c:=NearestPoint(r,GetCoord(15,0),0);
+  AssertEquals(15, UnitToMeters(c.X));
+  AssertEquals(10, UnitToMeters(c.Y));
+
+  c:=NearestPoint(r,GetCoord(1,0),MeterToUnit(1));
+  AssertEquals(11, UnitToMeters(c.X));
+  AssertEquals(10, UnitToMeters(c.Y));
 end;
 
 initialization

@@ -21,6 +21,7 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
+        <CommandLineParams Value="--format=plain -a"/>
       </local>
     </RunParams>
     <RequiredPackages Count="1">
