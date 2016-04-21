@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, OpenGLContext, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls, ExtCtrls, ColorBox, Grids,
-  gl,
+  gl, GLext,
   gdsreader, lefreader, blifreader,
   cells, geometry, drc,
   StdCtrls, Types;
@@ -69,6 +69,11 @@ type
   private
     function PosToWorld(const APos: TPoint): TCoordinate;
   private
+    GotCallList: boolean;
+    CallList: array of GLuint;
+    procedure RegenCallLists;
+    procedure DrawLists;
+  private
     DrawMode: TDrawMode;
 
     IsDragging: boolean;
@@ -80,10 +85,12 @@ type
 
     CurrentCell: TCell;
 
+    procedure DrawCell(ACell: TCell; ALocation: TCoordinate; ALayer: longint);
     procedure DrawCell(ACell: TCell; ALocation: TCoordinate);
     procedure DrawNetlist;
     procedure ResetZoom;
 
+    procedure DrawPolyC(const APoly: TPoly; ALayerIdx: longint);
     procedure DrawPoly(const APoly: TPoly);
 
     procedure DoLoadGDS;
@@ -157,6 +164,8 @@ end;
 procedure TForm1.oglViewMakeCurrent(Sender: TObject; var Allow: boolean);
 begin
   Allow:=true;
+
+  Load_GL_version_1_2;
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -239,7 +248,20 @@ begin
         glClear(GL_COLOR_BUFFER_BIT);
       end;
     dmCell:
-      DrawCell(CurrentCell, Coord(0,0));
+      begin
+        glTranslated(0,0,-50);
+        glScaled(1/Scale,1/scale,1);
+        glTranslated(Offset.x,offset.y,0);
+
+        glTranslated(mouse.x,mouse.y,0);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        DrawCell(CurrentCell, Coord(0,0));
+
+        glDisable(GL_BLEND);
+      end;
     dmNetList:
       DrawNetlist;
   end;
@@ -295,54 +317,135 @@ begin
   result:=Coord(round(APos.x*rScale+Offset.X), round(APos.Y*rScale+Offset.Y));
 end;
 
-procedure TForm1.DrawCell(ACell: TCell; ALocation: TCoordinate);
+procedure TForm1.RegenCallLists;
 var
-  i, i2, layer: longint;
+  layer, i: longint;
+  li: TLayerInfo;
 begin
+  for i:=0 to high(CallList) do
+    glDeleteLists(CallList[i], 1);
+
+  setlength(CallList, length(layers));
+  for layer:=0 to High(layers) do
+  begin
+    CallList[layer]:=glGenLists(1);
+
+    glNewList(CallList[layer],GL_COMPILE);
+
+    li:=layers[layer];
+    glColor4ub(Red(li.Color), green(li.Color), blue(li.Color), TrackBar1.Position);
+
+    for i:=0 to Layout.Count-1 do
+    begin
+      glPushMatrix();
+      glTranslated(Layout.Instance[i].Location.x,Layout.Instance[i].Location.y,0);
+
+      DrawCell(Layout.Instance[i].Cell, Layout.Instance[i].Location, layer);
+
+      glPopMatrix();
+    end;
+
+    glEndList();
+  end;
+
+  GotCallList:=true;
+end;
+
+procedure TForm1.DrawLists;
+var
+  layer: longint;
+begin
+  if length(CallList)<>length(layers) then exit;
+
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
   glTranslated(0,0,-50);
   glScaled(1/Scale,1/scale,1);
   glTranslated(Offset.x,offset.y,0);
-
   glTranslated(mouse.x,mouse.y,0);
-  glTranslated(ALocation.x,ALocation.y,0);
 
-  glenable(GL_BLEND);
-
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_BLEND);
+  glBlendColor(1,1,1,TrackBar1.Position/255);
+  glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
 
   for layer:=0 to high(Layers) do
   begin
     if not layers[layer].Visible then continue;
+    glCallList(CallList[layer]);
+  end;
+
+  glDisable(GL_BLEND);
+end;
+
+procedure TForm1.DrawCell(ACell: TCell; ALocation: TCoordinate; ALayer: longint);
+var
+  i, i2: longint;
+  l: TLayer;
+begin
+  l:=layers[ALayer].Layer;
+
+  glBegin(GL_TRIANGLE_STRIP);
+
+  if RenderLayersMenu.Checked then
+    for i:=0 to ACell.PolygonCount-1 do
+      if ACell.Polygons[i].Layer=l then
+        DrawPolyC(ACell.Polygons[i], ALayer);
+
+  if RenderObsMenu.Checked then
+    for i:=0 to ACell.ObstructionCount-1 do
+      if ACell.Obstructions[i].Layer=l then
+        DrawPolyC(ACell.Obstructions[i], ALayer);
+
+  if RenderPinsMenu.Checked then
+    for i:=0 to ACell.PinsCount-1 do
+      for i2:=0 to high(ACell.Pins[i].Polygons) do
+         if ACell.Pins[i].Polygons[i2].Layer=l then
+           DrawPolyC(ACell.Pins[i].Polygons[i2], ALayer);
+
+  glEnd();
+end;
+
+procedure TForm1.DrawCell(ACell: TCell; ALocation: TCoordinate);
+var
+  i, i2, layer: longint;
+  li: TLayerInfo;
+  l: TLayer;
+begin
+  for layer:=0 to high(Layers) do
+  begin
+    if not layers[layer].Visible then continue;
+
+    li:=layers[layer];
+    glColor4ub(Red(li.Color), green(li.Color), blue(li.Color), TrackBar1.Position);
+
+    l:=layers[layer].Layer;
 
     if RenderLayersMenu.Checked then
       for i:=0 to ACell.PolygonCount-1 do
-        if ACell.Polygons[i].Layer=layers[layer].Layer then
+        if ACell.Polygons[i].Layer=l then
           DrawPoly(ACell.Polygons[i]);
 
     if RenderObsMenu.Checked then
       for i:=0 to ACell.ObstructionCount-1 do
-        if ACell.Obstructions[i].Layer=layers[layer].Layer then
+        if ACell.Obstructions[i].Layer=l then
           DrawPoly(ACell.Obstructions[i]);
 
     if RenderPinsMenu.Checked then
       for i:=0 to ACell.PinsCount-1 do
         for i2:=0 to high(ACell.Pins[i].Polygons) do
-           if ACell.Pins[i].Polygons[i2].Layer=layers[layer].Layer then
+           if ACell.Pins[i].Polygons[i2].Layer=l then
              DrawPoly(ACell.Pins[i].Polygons[i2]);
   end;
-
-  gldisable(GL_BLEND);
 end;
 
 procedure TForm1.DrawNetlist;
 var
   i: longint;
 begin
-  for i:=0 to Layout.Count-1 do
-    DrawCell(Layout.Instance[i].Cell, Layout.Instance[i].Location);
+  if not GotCallList then
+    RegenCallLists;
+  DrawLists;
 end;
 
 procedure TForm1.ResetZoom;
@@ -424,23 +527,43 @@ begin
   end;
 end;
 
+procedure TForm1.DrawPolyC(const APoly: TPoly; ALayerIdx: longint);
+begin
+  glVertex3d(APoly.Poly.Points[0].X, APoly.Poly.Points[0].y, ALayerIdx);
+
+  glVertex3d(APoly.Poly.Points[0].X, APoly.Poly.Points[0].y, ALayerIdx);
+  glVertex3d(APoly.Poly.Points[1].X, APoly.Poly.Points[1].y, ALayerIdx);
+  glVertex3d(APoly.Poly.Points[3].X, APoly.Poly.Points[3].y, ALayerIdx);
+  glVertex3d(APoly.Poly.Points[2].X, APoly.Poly.Points[2].y, ALayerIdx);
+
+  glVertex3d(APoly.Poly.Points[2].X, APoly.Poly.Points[2].y, ALayerIdx);
+end;
+
 procedure TForm1.DrawPoly(const APoly: TPoly);
 var
-  i: longint;
-  li: TLayerInfo;
+  i, ALayerIdx: longint;
 begin
-  li:=GetLayerInfo(APoly.Layer);
+  if APoly.Poly.Rect then
+  begin
+    glBegin(GL_TRIANGLE_STRIP);
 
-  if not li.Visible then exit;
+    ALayerIdx:=GetLayerInfoIdx(APoly.Layer);
+    glVertex3d(APoly.Poly.Points[0].X, APoly.Poly.Points[0].y, ALayerIdx);
+    glVertex3d(APoly.Poly.Points[1].X, APoly.Poly.Points[1].y, ALayerIdx);
+    glVertex3d(APoly.Poly.Points[3].X, APoly.Poly.Points[3].y, ALayerIdx);
+    glVertex3d(APoly.Poly.Points[2].X, APoly.Poly.Points[2].y, ALayerIdx);
 
-  glColor4ub(Red(li.Color), green(li.Color), blue(li.Color), TrackBar1.Position);
+    glEnd();
+  end
+  else
+  begin
+    glBegin(GL_POLYGON);
 
-  glBegin(GL_POLYGON);
+    for i:=0 to high(APoly.Poly.Points) do
+      glVertex3d(APoly.Poly.Points[i].X, APoly.Poly.Points[i].y, GetLayerInfoIdx(APoly.Layer));
 
-  for i:=0 to high(APoly.Poly.Points) do
-    glVertex3d(APoly.Poly.Points[i].X, APoly.Poly.Points[i].y, GetLayerInfoIdx(APoly.Layer));
-
-  glEnd();
+    glEnd();
+  end;
 end;
 
 procedure TForm1.DoLoadGDS;

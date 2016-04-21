@@ -1,0 +1,7 @@
+lib/
+*.bak
+*.lps
+*.res
+*.ppu
+*.o
+*.compiled
