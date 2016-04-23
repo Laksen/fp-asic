@@ -9,6 +9,7 @@ uses
   gl, GLext,
   gdsreader, lefreader, blifreader,
   cells, geometry, drc,
+  dom, XMLRead,
   StdCtrls, Types;
 
 type
@@ -93,6 +94,7 @@ type
     procedure DrawPolyC(const APoly: TPoly; ALayerIdx: longint);
     procedure DrawPoly(const APoly: TPoly);
 
+    procedure DoLoadStack;
     procedure DoLoadGDS;
     procedure DoLoadLEF;
     procedure DoLoadBLIF;
@@ -229,7 +231,9 @@ end;
 
 procedure TForm1.AddFileItemClick(Sender: TObject);
 begin
-  if tvTech.Items.TopLvlItems[0].Items[0].Selected then
+  if tvTech.Items.TopLvlItems[0].Selected then
+    DoLoadStack
+  else if tvTech.Items.TopLvlItems[0].Items[0].Selected then
     DoLoadGDS
   else if tvTech.Items.TopLvlItems[0].Items[1].Selected then
     DoLoadLEF
@@ -564,6 +568,76 @@ begin
 
     glEnd();
   end;
+end;
+
+procedure TForm1.DoLoadStack;
+var
+  FileName, map: String;
+  doc: TXMLDocument;
+  nodes: TDOMNodeList;
+  i: longint;
+  node: TDOMElement;
+begin
+  OpenDialog1.Filter:='Stack Files|*.xml';
+  OpenDialog1.Title:='Select stack file';
+
+  if OpenDialog1.Execute then
+    FileName:=OpenDialog1.FileName
+  else
+    exit;
+
+  ReadXMLFile(doc, OpenDialog1.FileName);
+
+  nodes:=doc.GetElementsByTagName('gds2');
+  for i:=0 to nodes.Count-1 do
+  begin
+    node:=TDOMElement(nodes[i]);
+
+    map:='';
+    if node.hasAttribute('map') then
+      map:=string(node.GetAttribute('map'));
+
+    filename:=string(node.TextContent);
+
+    LoadGDS(FileName, map);
+
+    tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[0], ExtractRelativepath(GetCurrentDir, FileName));
+    tvTech.Items.TopLvlItems[0].items[0].Expand(true);
+  end;
+  nodes.free;
+
+  nodes:=doc.GetElementsByTagName('lef');
+  for i:=0 to nodes.Count-1 do
+  begin
+    node:=TDOMElement(nodes[i]);
+
+    filename:=string(node.TextContent);
+
+    LoadLEF(FileName);
+
+    tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[1], ExtractRelativepath(GetCurrentDir, Filename));
+    tvTech.Items.TopLvlItems[0].items[1].Expand(true);
+  end;
+  nodes.free;
+
+  nodes:=doc.GetElementsByTagName('blif');
+  for i:=0 to nodes.Count-1 do
+  begin
+    node:=TDOMElement(nodes[i]);
+
+    filename:=string(node.TextContent);
+
+    LoadBlif(FileName);
+    LayoutRows;
+
+    tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[2], ExtractRelativepath(GetCurrentDir, Filename));
+    tvTech.Items.TopLvlItems[0].items[2].Expand(true);
+  end;
+  nodes.free;
+
+  UpdateCells;
+
+  ReorderLayers;
 end;
 
 procedure TForm1.DoLoadGDS;
