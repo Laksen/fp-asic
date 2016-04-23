@@ -3,7 +3,8 @@ program asictest;
 {$mode objfpc}{$H+}
 
 uses
-  Classes, consoletestrunner, geometrytest;
+  Classes, consoletestrunner,
+  geometrytest, libparsetest;
 
 type
 
