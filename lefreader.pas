@@ -63,6 +63,9 @@ var
   x, y: double;
   start, stop: TCoordinate;
   cell: TCell;
+  dir: TPinDirection;
+  clas: TPinClass;
+  shape: TPinShape;
 
   procedure Next;
   begin
@@ -267,9 +270,42 @@ begin
 
             Next;
 
+            dir:=pdUnknown;
+            clas:=pcNone;
+            shape:=psDefault;
+
             while pos('END ', s)<>1 do
             begin
-              if pos('PORT', s)=1 then
+              if pos('DIRECTION', s)=1 then
+              begin
+                delete(s,1,9);
+                s:=Uppercase(trim(copy2symb(s,';')));
+
+                case s of
+                  'INPUT': dir:=pdIn;
+                  'OUTPUT': dir:=pdOut;
+                  'INOUT': dir:=pdInOut;
+                end;
+              end
+              else if pos('USE', s)=1 then
+              begin
+                delete(s,1,3);
+                s:=Uppercase(trim(copy2symb(s,';')));
+
+                case s of
+                  'POWER': clas:=pcPower;
+                end;
+              end
+              else if pos('SHAPE', s)=1 then
+              begin
+                delete(s,1,5);
+                s:=Uppercase(trim(copy2symb(s,';')));
+
+                case s of
+                  'ABUTMENT': shape:=psAbutment;
+                end;
+              end
+              else if pos('PORT', s)=1 then
               begin
                 next;
                 while pos('END', s)<>1 do
@@ -298,7 +334,7 @@ begin
 
                     stop:=GetCoord(ValueToMeter(x),ValueToMeter(y));
 
-                    cell.AddPin(name, GetLayerRect(layer, start, stop));
+                    cell.AddPin(name, GetLayerRect(layer, start, stop), dir, clas, shape);
 
                     Next;
                   end

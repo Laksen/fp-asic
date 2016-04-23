@@ -35,9 +35,17 @@ type
     Layer: TLayer;
   end;
 
+  TPinDirection = (pdUnknown, pdIn, pdOut, pdInOut);
+  TPinClass = (pcNone, pcPad, pcClock, pcPower);
+  TPinShape = (psDefault, psAbutment);
+
+  PPin = ^TPin;
   TPin = record
     Name: string;
     Polygons: array of TPoly;
+    Direction: TPinDirection;
+    PinClass: TPinClass;
+    Shape: TPinShape;
   end;
 
   TCellClass = (ccNone,
@@ -64,7 +72,9 @@ type
 
     procedure AddPoly(const APoly: TPoly);
     procedure AddObstruction(const AObs: TPoly);
-    procedure AddPin(const AName: string; const APoly: TPoly);
+    procedure AddPin(const AName: string; const APoly: TPoly; ADirection: TPinDirection; AClass: TPinClass; AShape: TPinShape);
+
+    function FindPin(const AName: string): PPin;
 
     property Name: string read fName;
     property PinsDefined: boolean read fPinsDefined;
@@ -249,7 +259,7 @@ begin
   fObs[high(fObs)]:=AObs;
 end;
 
-procedure TCell.AddPin(const AName: string; const APoly: TPoly);
+procedure TCell.AddPin(const AName: string; const APoly: TPoly; ADirection: TPinDirection; AClass: TPinClass; AShape: TPinShape);
 var
   i,x: longint;
 begin
@@ -272,6 +282,20 @@ begin
 
   setlength(fPins[x].Polygons, high(fPins[x].Polygons)+2);
   fPins[x].Polygons[high(fPins[x].Polygons)]:=APoly;
+  fPins[x].Direction:=ADirection;
+  fPins[x].PinClass:=AClass;
+  fPins[x].Shape:=AShape;
+end;
+
+function TCell.FindPin(const AName: string): PPin;
+var
+  i: longint;
+begin
+  result:=nil;
+
+  for i:=0 to high(fPins) do
+    if fPins[i].Name=AName then
+      exit(@fPins[i]);
 end;
 
 initialization

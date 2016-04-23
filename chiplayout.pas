@@ -17,6 +17,9 @@ type
     fNetClass: TNetClass;
   public
     constructor Create(const AName: string; ANetClass: TNetClass);
+
+    property Name: string read fName;
+    property NetClass: TNetClass read fNetClass;
   end;
 
   TPinConnection = record
@@ -59,6 +62,8 @@ type
     fNets: TStringList;
     function getCount: longint;
     function GetInstance(AIndex: longint): TCellInst;
+    function GetNet(AIndex: longint): TNet;
+    function GetNetCount: longint;
   public
     function FindNet(const AName: string): TNet;
 
@@ -67,6 +72,9 @@ type
 
     constructor Create;
     destructor Destroy; override;
+
+    property NetCount: longint read GetNetCount;
+    property Net[AIndex: longint]: TNet read GetNet;
 
     property Count: longint read getCount;
     property Instance[AIndex: longint]: TCellInst read GetInstance;
@@ -205,6 +213,16 @@ end;
 function TLayout.GetInstance(AIndex: longint): TCellInst;
 begin
   result:=TCellInst(fInstances.Objects[AIndex]);
+end;
+
+function TLayout.GetNet(AIndex: longint): TNet;
+begin
+  result:=TNet(fNets.Objects[AIndex]);
+end;
+
+function TLayout.GetNetCount: longint;
+begin
+  result:=fNets.Count;
 end;
 
 function TLayout.FindNet(const AName: string): TNet;
