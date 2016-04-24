@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, OpenGLContext, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls, ExtCtrls, ColorBox, Grids,
   gl, GLext,
-  gdsreader, lefreader, blifreader,
+  gdsreader, lefreader, libreader, blifreader,
   cells, geometry, drc,
   dom, XMLRead,
   StdCtrls, Types;
@@ -97,6 +97,7 @@ type
     procedure DoLoadStack;
     procedure DoLoadGDS;
     procedure DoLoadLEF;
+    procedure DoLoadLib;
     procedure DoLoadBLIF;
 
     procedure UpdateCells;
@@ -238,6 +239,8 @@ begin
   else if tvTech.Items.TopLvlItems[0].Items[1].Selected then
     DoLoadLEF
   else if tvTech.Items.TopLvlItems[0].Items[2].Selected then
+    DoLoadLib
+  else if tvTech.Items.TopLvlItems[0].Items[3].Selected then
     DoLoadBlif;
 end;
 
@@ -620,6 +623,20 @@ begin
   end;
   nodes.free;
 
+  nodes:=doc.GetElementsByTagName('lib');
+  for i:=0 to nodes.Count-1 do
+  begin
+    node:=TDOMElement(nodes[i]);
+
+    filename:=string(node.TextContent);
+
+    Loadlib(FileName);
+
+    tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[2], ExtractRelativepath(GetCurrentDir, Filename));
+    tvTech.Items.TopLvlItems[0].items[2].Expand(true);
+  end;
+  nodes.free;
+
   nodes:=doc.GetElementsByTagName('blif');
   for i:=0 to nodes.Count-1 do
   begin
@@ -630,8 +647,8 @@ begin
     LoadBlif(FileName);
     LayoutRows;
 
-    tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[2], ExtractRelativepath(GetCurrentDir, Filename));
-    tvTech.Items.TopLvlItems[0].items[2].Expand(true);
+    tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[3], ExtractRelativepath(GetCurrentDir, Filename));
+    tvTech.Items.TopLvlItems[0].items[3].Expand(true);
   end;
   nodes.free;
 
@@ -702,6 +719,26 @@ begin
   ReorderLayers;
 end;
 
+procedure TForm1.DoLoadLib;
+var
+  FileName: String;
+begin
+  OpenDialog1.Filter:='Liberty Files|*.lib';
+  OpenDialog1.Title:='Select LIB file';
+
+  if OpenDialog1.Execute then
+    FileName:=OpenDialog1.FileName
+  else
+    exit;
+
+  LoadLib(FileName);
+
+  tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[2], ExtractRelativepath(GetCurrentDir, Filename));
+  tvTech.Items.TopLvlItems[0].items[2].Expand(true);
+
+  UpdateCells;
+end;
+
 procedure TForm1.DoLoadBLIF;
 var
   FileName: String;
@@ -717,8 +754,8 @@ begin
   LoadBlif(FileName);
   LayoutRows;
 
-  tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[2], ExtractRelativepath(GetCurrentDir, Filename));
-  tvTech.Items.TopLvlItems[0].items[2].Expand(true);
+  tvTech.Items.AddChild(tvTech.Items.TopLvlItems[0].Items[3], ExtractRelativepath(GetCurrentDir, Filename));
+  tvTech.Items.TopLvlItems[0].items[3].Expand(true);
 
   UpdateCells;
 end;
