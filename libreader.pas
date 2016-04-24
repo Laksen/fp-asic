@@ -12,6 +12,7 @@ procedure LoadLib(const AFilename: string);
 implementation
 
 uses
+  math,
   cells,
   libparser;
 
@@ -33,12 +34,21 @@ begin
   result:=AValue.GetValue=AStr;
 end;
 
+function GetDefault(AEntry: TEntry; ADefault: double): double;
+begin
+  if AEntry=nil then
+    exit(ADefault)
+  else
+    result:=AEntry.GetValue;
+end;
+
 procedure Parse(AEntry: TEntry);
 var
   ent, cell, pin: TEntry;
   lu_tables: TEntries;
   ci: TCell;
   cpin: PPin;
+  fcap, rcap, cap: Double;
 begin
   ExpectSub(AEntry, 'library');
 
@@ -50,9 +60,9 @@ begin
 
   for cell in AEntry.GetMultiple('cell') do
   begin
-    ci:=FindCell(cell.GetValue);
+    if not HasCell(cell.GetValue) then continue;
 
-    if ci=nil then continue;
+    ci:=FindCell(cell.GetValue);
 
     for pin in cell.GetMultiple('pin') do
     begin
@@ -61,6 +71,13 @@ begin
 
       if Equals(pin.GetSingle('clock'),'true') then cpin^.PinClass:=pcClock;
       if Equals(pin.GetSingle('is_pad'),'true') then cpin^.PinClass:=pcPad;
+
+      // Capacitance
+      fcap:=GetDefault(pin.GetSingle('fall_capacitance'), 0);
+      rcap:=GetDefault(pin.GetSingle('rise_capacitance'), 0);
+      cap:=GetDefault(pin.GetSingle('capacitance'), max(fcap,rcap));
+
+      cpin^.Physical.Capacitance:=cap;
     end;
   end;
 end;
@@ -88,9 +105,6 @@ begin
     fs.Free;
   end;
 end;
-
-initialization
-  LoadLib('../osu035/osu035_stdcells.lib');
 
 end.
 

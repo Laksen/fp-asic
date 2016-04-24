@@ -39,6 +39,10 @@ type
   TPinClass = (pcNone, pcPad, pcClock, pcPower);
   TPinShape = (psDefault, psAbutment);
 
+  TPhysical = record
+    Capacitance: double;
+  end;
+
   PPin = ^TPin;
   TPin = record
     Name: string;
@@ -46,6 +50,8 @@ type
     Direction: TPinDirection;
     PinClass: TPinClass;
     Shape: TPinShape;
+
+    Physical: TPhysical;
   end;
 
   TCellClass = (ccNone,
