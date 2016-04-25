@@ -5,7 +5,8 @@ unit cells;
 interface
 
 uses
-  Classes, SysUtils, math, geometry;
+  Classes, SysUtils, math,
+  geometry, timinginfo;
 
 type
   TLayerType = (ltUnknown, ltCut, ltRouting, ltPoly);
@@ -39,8 +40,16 @@ type
   TPinClass = (pcNone, pcPad, pcClock, pcPower);
   TPinShape = (psDefault, psAbutment);
 
+  TPhysicalTiming = record
+    RelativePin: string;
+    FallTransition,
+    RiseTransition: TTimingTable;
+  end;
+
   TPhysical = record
     Capacitance: double;
+
+    TransitionTimes: array of TPhysicalTiming;
   end;
 
   PPin = ^TPin;

@@ -30,6 +30,7 @@ type
   TTimingTable = class
   private
     fDimensions: array of record Indicies: TDimension; DimType: TDimensionType; end;
+    fName: string;
 
     function GetDimensionCount: longint;
     function GetDimensionIndices(AIndex: longint): TDimension;
@@ -39,7 +40,9 @@ type
   public
     function Clone: TTimingTable;
 
-    constructor Create(ADimensions: LongInt);
+    constructor Create(const AName: string; ADimensions: LongInt);
+
+    property Name: string read fName;
 
     property DimensionCount: longint read GetDimensionCount;
     property DimensionIndices[AIndex: longint]: TDimension read GetDimensionIndices write SetDimensionIndices;
@@ -50,7 +53,30 @@ type
 
   end;
 
+procedure AddTable(ATable: TTimingTable);
+function GetTable(const AName: string): TTimingTable;
+
 implementation
+
+var
+  Timings: TStringList;
+
+procedure AddTable(ATable: TTimingTable);
+begin
+  if ATable=nil then exit;
+  Timings.AddObject(ATable.Name, ATable);
+end;
+
+function GetTable(const AName: string): TTimingTable;
+var
+  idx: Integer;
+begin
+  idx:=Timings.IndexOf(AName);
+  if idx<0 then
+    result:=nil
+  else
+    result:=TTimingTable(Timings.Objects[idx]);
+end;
 
 function TTimingTable.GetDimensionCount: longint;
 begin
@@ -79,15 +105,25 @@ end;
 
 function TTimingTable.Clone: TTimingTable;
 begin
-  result:=TTimingTable.Create(0);
+  result:=TTimingTable.Create(Name+inttostr(Timings.Count), 0);
   result.fDimensions:=Copy(fDimensions);
 end;
 
-constructor TTimingTable.Create(ADimensions: LongInt);
+constructor TTimingTable.Create(const AName: string; ADimensions: LongInt);
 begin
   inherited Create;
+  fName:=AName;
   SetLength(fDimensions, ADimensions);
 end;
+
+initialization
+  Timings:=TStringList.Create;
+  Timings.CaseSensitive:=true;
+  Timings.Sorted:=true;
+  Timings.Duplicates:=dupIgnore;
+  Timings.OwnsObjects:=true;
+finalization
+  Timings.Free;
 
 end.
 

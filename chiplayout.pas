@@ -11,11 +11,21 @@ uses
 type
   TNetClass = (ncNet, ncInput, ncOutput);
 
+  TCellInst = class;
+
+  TCellConnection = record
+    Cell: TCellInst;
+    Pin: string;
+  end;
+
   TNet = class
   private
     fName: string;
     fNetClass: TNetClass;
+    fDestinations: array of TCellConnection;
   public
+    procedure Connect(ACell: TCellInst; const APin: string);
+
     constructor Create(const AName: string; ANetClass: TNetClass);
 
     property Name: string read fName;
@@ -116,7 +126,7 @@ begin
     y:=ceil(sqrt((Total/SlotSize)/(CoreSize.y/CoreSize.x)));
     x:=ceil(y*CoreSize.Y/CoreSize.X);
 
-    writeln('Grid = ',UnitToMeters(x*CoreSize.x), ' x ',UnitToMeters(y*CoreSize.y));
+    //writeln('Grid = ',UnitToMeters(x*CoreSize.x), ' x ',UnitToMeters(y*CoreSize.y));
 
     g:=TGridLayout.Create(x, y, CoreSize.x, CoreSize.y);
 
@@ -182,6 +192,13 @@ begin
 
     fillchar(fGrid[i][0], length(fGrid[i]), false);
   end;
+end;
+
+procedure TNet.Connect(ACell: TCellInst; const APin: string);
+begin
+  SetLength(fDestinations, high(fDestinations)+2);
+  fDestinations[high(fDestinations)].Pin:=APin;
+  fDestinations[high(fDestinations)].Cell:=ACell;
 end;
 
 constructor TNet.Create(const AName: string; ANetClass: TNetClass);

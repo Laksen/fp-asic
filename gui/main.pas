@@ -26,6 +26,8 @@ type
     MainMenu1: TMainMenu;
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
+    MenuItem3: TMenuItem;
+    MenuItem4: TMenuItem;
     Panel2: TPanel;
     Panel3: TPanel;
     RenderLayersMenu: TMenuItem;
@@ -57,6 +59,7 @@ type
     procedure LayerGridDrawCell(Sender: TObject; aCol, aRow: Integer; aRect: TRect; aState: TGridDrawState);
     procedure LayerGridGetCheckboxState(Sender: TObject; ACol, ARow: Integer; var Value: TCheckboxState);
     procedure LayerGridSetCheckboxState(Sender: TObject; ACol, ARow: Integer; const Value: TCheckboxState);
+    procedure MenuItem4Click(Sender: TObject);
     procedure oglViewMakeCurrent(Sender: TObject; var Allow: boolean);
     procedure oglViewMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure oglViewMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -162,6 +165,55 @@ procedure TForm1.LayerGridSetCheckboxState(Sender: TObject; ACol, ARow: Integer;
 begin
   Layers[aRow].Visible:=not Layers[aRow].Visible;
   oglView.Repaint;
+end;
+
+procedure TForm1.MenuItem4Click(Sender: TObject);
+var
+  p1, p2: TPoly;
+  i, i2: longint;
+  ori: TOrientation;
+  s: String;
+  p: TPolygon;
+  w,l: TUnit;
+begin
+  s:='';
+
+  for i:=0 to CurrentCell.PolygonCount-1 do
+  begin
+    p1:=CurrentCell.Polygons[i];
+
+    if p1.Layer.Name<>'poly' then
+      continue;
+
+    for i2:=0 to CurrentCell.PolygonCount-1 do
+      if i<>i2 then
+      begin
+        p2:=CurrentCell.Polygons[i2];
+
+        if p2.Layer.Name<>'active' then
+          continue;
+
+        if IsMosOverlap(p1.Poly, p2.Poly, ori) then
+        begin
+          p:=GetOverlap(p1.Poly, p2.Poly);
+
+          if ori=oAX then
+          begin
+            l:=p.Stop.Y-p.Start.Y;
+            w:=p.Stop.X-p.Start.X;
+          end
+          else
+          begin
+            w:=p.Stop.Y-p.Start.Y;
+            l:=p.Stop.X-p.Start.X;
+          end;
+
+          s:=s+Format('M a b c d nfet l=%fu w=%fu;', [UnitToMeters(l)*1e6,UnitToMeters(w)*1e6])+LineEnding;
+        end;
+      end;
+  end;
+
+  ShowMessage(s);
 end;
 
 procedure TForm1.oglViewMakeCurrent(Sender: TObject; var Allow: boolean);
