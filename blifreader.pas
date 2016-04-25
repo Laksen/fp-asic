@@ -77,6 +77,8 @@ var
   i, i2: longint;
   sc: TSubCircuit;
   cell: TCellInst;
+  net: TNet;
+  pin: String;
 begin
   st:=TFileStream.Create(AFilename, fmOpenRead);
   try
@@ -101,7 +103,11 @@ begin
 
         for i2:=0 to sc.Count-1 do
         begin
-          cell.Connect(sc.Connection[i2].Pin, Layout.FindNet(sc.Connection[i2].Net));
+          net:=Layout.FindNet(sc.Connection[i2].Net);
+          pin:=sc.Connection[i2].Pin;
+
+          cell.Connect(pin, net);
+          net.Connect(cell, pin);
         end;
       end;
     finally

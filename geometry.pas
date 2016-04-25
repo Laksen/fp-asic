@@ -50,6 +50,11 @@ function Inside(const A: TPolygon; const B: TCoordinate): boolean;
 function Overlap(const A, B: TPolygon): boolean;
 function GetOverlap(const A, B: TPolygon): TPolygon;
 
+type
+  TOrientation = (oAX, oBX);
+
+function IsMosOverlap(const A,B: TPolygon; out AOrientation: TOrientation): boolean;
+
 function Distance(const A,B: TCoordinate): TUnit;
 function DistanceSqr(const A,B: TCoordinate): TUnit;
 
@@ -127,12 +132,17 @@ begin
 end;
 
 procedure MinMax(const A, B: TCoordinate; out AMin, AMax: TCoordinate);
+var
+  s,t: TCoordinate;
 begin
-  AMin.x:=Min(a.x, b.x);
-  AMin.y:=Min(a.y, b.y);
+  s.x:=Min(a.x, b.x);
+  s.y:=Min(a.y, b.y);
 
-  AMax.x:=Max(a.x, b.x);
-  AMax.y:=Max(a.y, b.y);
+  t.x:=Max(a.x, b.x);
+  t.y:=Max(a.y, b.y);
+
+  AMin:=s;
+  AMax:=t;
 end;
 
 procedure MinMax(const APoly: TPolygon; out AMin, AMax: TCoordinate);
@@ -151,8 +161,11 @@ begin
 
   for i:=1 to high(APoly.Points) do
   begin
-    MinMax(amin, APoly.Points[i], AMin, AMax);
-    MinMax(amax, APoly.Points[i], AMin, AMax);
+    AMin.x:=Min(AMin.X, APoly.Points[i].X);
+    AMin.y:=Min(AMin.y, APoly.Points[i].y);
+
+    AMax.x:=Max(AMax.X, APoly.Points[i].X);
+    AMax.y:=Max(AMax.y, APoly.Points[i].y);
   end;
 end;
 
@@ -267,6 +280,24 @@ begin
   end
   else
     result:=GetRect(Coord(0,0), Coord(0,0));
+end;
+
+function IsMosOverlap(const A, B: TPolygon; out AOrientation: TOrientation): boolean;
+begin
+  result:=Overlap(A,B);
+  AOrientation:=oAX;
+
+  if result then
+  begin
+    if (A.Start.Y>B.Start.Y) and (A.Stop.Y<B.Start.Y) and
+       (A.Start.X<B.Start.X) and (A.Stop.X>B.Stop.X) then
+      AOrientation:=oAX
+    else if (A.Start.Y<B.Start.Y) and (A.Stop.Y>B.Start.Y) and
+       (A.Start.X>B.Start.X) and (A.Stop.X<B.Stop.X) then
+      AOrientation:=oBX
+    else
+      result:=false;
+  end;
 end;
 
 function Distance(const A, B: TCoordinate): TUnit;
