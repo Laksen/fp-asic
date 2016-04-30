@@ -90,6 +90,12 @@ begin
 end;
 
 function GetTiming(ATable: TEntry): TTimingTable;
+var
+  e: TEntry;
+  st: string;
+  s: Variant;
+  c: Char;
+  i: longint;
 begin
   result:=GetTable(ATable.GetValue);
   if result<>nil then
@@ -100,6 +106,23 @@ begin
     if ATable.GetSingle('index_1')<>nil then Result.DimensionIndices[0]:=ParseIndex(ATable.GetSingle('index_1').GetValue);
     if ATable.GetSingle('index_2')<>nil then Result.DimensionIndices[1]:=ParseIndex(ATable.GetSingle('index_2').GetValue);
     if ATable.GetSingle('index_3')<>nil then Result.DimensionIndices[2]:=ParseIndex(ATable.GetSingle('index_3').GetValue);
+
+    e:=ATable.GetSingle('values');
+
+    st:='';
+    for s in e.GetValues do
+      if st='' then
+        st:=s
+      else
+        st:=st+','+s;
+
+    i:=0;
+
+    while st<>'' do
+    begin
+      Result.Data[i]:=strtofloat(trim(Copy2SymbDel(st,',')));
+      inc(i);
+    end;
   end;
 end;
 

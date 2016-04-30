@@ -37,10 +37,12 @@ type
     function GetDimensionCount: longint;
     function GetDimensionIndices(AIndex: longint): TDimension;
     function GetDimensionType(AIndex: longint): TDimensionType;
+    function GetRawData(AIndex: longint): double;
     procedure SetDimensionIndices(AIndex: longint; AValue: TDimension);
     procedure SetDimensionType(AIndex: longint; AValue: TDimensionType);
 
     function GetIndex(AValue: double; ADimension: longint; out AScale: double): longint;
+    procedure SetRawData(AIndex: longint; AValue: double);
   public
     function GetData(AIdx1: double): double;
     function GetData(AIdx1, AIdx2: double): double;
@@ -51,6 +53,8 @@ type
     constructor Create(const AName: string; ADimensions: LongInt);
 
     property Name: string read fName;
+
+    property Data[AIndex: longint]: double read GetRawData write SetRawData;
 
     property DimensionCount: longint read GetDimensionCount;
     property DimensionIndices[AIndex: longint]: TDimension read GetDimensionIndices write SetDimensionIndices;
@@ -101,6 +105,11 @@ begin
   result:=fDimensions[AIndex].DimType;
 end;
 
+function TTimingTable.GetRawData(AIndex: longint): double;
+begin
+  result:=fData[AIndex];
+end;
+
 procedure TTimingTable.SetDimensionIndices(AIndex: longint; AValue: TDimension);
 begin
   fDimensions[AIndex].Indicies:=copy(AValue);
@@ -137,6 +146,11 @@ begin
       exit(i);
     end;
   end;
+end;
+
+procedure TTimingTable.SetRawData(AIndex: longint; AValue: double);
+begin
+  fData[AIndex]:=AValue;
 end;
 
 function Lerp(A,B, T: double): double;
@@ -177,9 +191,17 @@ begin
 end;
 
 function TTimingTable.Clone: TTimingTable;
+var
+  i, cnt: longint;
 begin
   result:=TTimingTable.Create(Name+inttostr(Timings.Count), 0);
   result.fDimensions:=Copy(fDimensions);
+
+  cnt:=1;
+  for i:=0 to high(fDimensions) do
+    cnt:=cnt*length(fDimensions[i].Indicies);
+
+  setlength(result.fData, cnt);
 end;
 
 constructor TTimingTable.Create(const AName: string; ADimensions: LongInt);
