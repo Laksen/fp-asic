@@ -97,9 +97,9 @@ begin
     result:=Result.Clone;
     AddTable(result);
 
-    if ATable.GetSingle('index_1') then Result.DimensionIndices[0]:=ParseIndex(ATable.GetSingle('index_1'));
-    if ATable.GetSingle('index_2') then Result.DimensionIndices[1]:=ParseIndex(ATable.GetSingle('index_2'));
-    if ATable.GetSingle('index_3') then Result.DimensionIndices[2]:=ParseIndex(ATable.GetSingle('index_3'));
+    if ATable.GetSingle('index_1')<>nil then Result.DimensionIndices[0]:=ParseIndex(ATable.GetSingle('index_1').GetValue);
+    if ATable.GetSingle('index_2')<>nil then Result.DimensionIndices[1]:=ParseIndex(ATable.GetSingle('index_2').GetValue);
+    if ATable.GetSingle('index_3')<>nil then Result.DimensionIndices[2]:=ParseIndex(ATable.GetSingle('index_3').GetValue);
   end;
 end;
 
