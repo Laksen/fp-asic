@@ -111,7 +111,8 @@ type
   end;
 
 var
-  CoreSize: TCoordinate;
+  CoreSize,
+  PadSize: TCoordinate;
 
 function GetLayerRect(ALayer: TLayer; const AStart, AStop: TCoordinate): TPoly;
 

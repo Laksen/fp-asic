@@ -5,7 +5,7 @@ unit chiplayout;
 interface
 
 uses
-  Classes, SysUtils, contnrs,
+  Classes, SysUtils,
   cells, geometry;
 
 type
@@ -248,7 +248,9 @@ var
 begin
   result:=nil;
   if fNets.Find(AName, idx) then
-    result:=TNet(fNets.Objects[idx]);
+    result:=TNet(fNets.Objects[idx])
+  else
+    raise exception.Create('Could not find net with name: "'+AName+'"');
 end;
 
 function TLayout.AddNet(const AName: string; ANetClass: TNetClass): TNet;

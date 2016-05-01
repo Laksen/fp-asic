@@ -258,6 +258,9 @@ begin
           begin
             pin:=Copy2SymbDel(nr, '=');
 
+            if nr='$true' then nr:=FVDDName
+            else if nr='$false' then nr:=FGNDName;
+
             AddStr(fNets, nr);
             ckt.AddConnection(pin, nr);
           end;

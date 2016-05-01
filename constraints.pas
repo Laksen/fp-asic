@@ -8,6 +8,8 @@ uses
   Classes, SysUtils;
 
 type
+  TStringArray = array of string;
+
   TConstraint = class
   private
     fName: string;
@@ -20,13 +22,17 @@ type
   TClockConstraint = class(TConstraint)
   private
     fPeriod: double;
+    fPin: string;
   public
-    constructor Create(const AName: string; APeriod: double);
+    constructor Create(const AName, APin: string; APeriod: double);
 
+    property Pin: string read fPin;
     property Period: double read fPeriod;
   end;
 
-function AddClock(const AName: string; APeriod: double): TConstraint;
+function GetClockPins: TStringArray;
+
+function AddClock(const AName, APin: string; APeriod: double): TConstraint;
 
 procedure LoadConstraints(const AFilename: string);
 
@@ -35,9 +41,29 @@ implementation
 var
   _Constraints: TStringList;
 
-function AddClock(const AName: string; APeriod: double): TConstraint;
+function GetClockPins: TStringArray;
+var
+  i,cnt: longint;
 begin
-  result:=TClockConstraint.Create(AName, APeriod);
+  cnt:=0;
+  for i:=0 to _Constraints.Count-1 do
+    if _Constraints.Objects[i] is TClockConstraint then
+      inc(cnt);
+
+  setlength(result, cnt);
+
+  cnt:=0;
+  for i:=0 to _Constraints.Count-1 do
+    if _Constraints.Objects[i] is TClockConstraint then
+    begin
+      result[cnt]:=TClockConstraint(_Constraints.Objects[i]).Pin;
+      inc(cnt);
+    end;
+end;
+
+function AddClock(const AName, APin: string; APeriod: double): TConstraint;
+begin
+  result:=TClockConstraint.Create(AName, APin, APeriod);
   _Constraints.AddObject(AName, result);
 end;
 
@@ -52,9 +78,10 @@ begin
   fName:=AName;
 end;
 
-constructor TClockConstraint.Create(const AName: string; APeriod: double);
+constructor TClockConstraint.Create(const AName, APin: string; APeriod: double);
 begin
   inherited Create(AName);
+  fPin:=APin;
   fPeriod:=APeriod;
 end;
 

@@ -203,6 +203,8 @@ begin
       end
       else if pos('SITE', s)=1 then
       begin
+        delete(s, 1,5); s:=trim(s);
+
         cls:='';
         while pos('END ', s)<>1 do
         begin
@@ -224,7 +226,9 @@ begin
             y:=strtofloat(trim(Copy2SymbDel(s,';'))); s:=trim(s);
 
             if cls = 'CORE' then
-              CoreSize:=GetCoord(ValueToMeter(x),ValueToMeter(y));
+              CoreSize:=GetCoord(ValueToMeter(x),ValueToMeter(y))
+            else if cls = 'IO' then
+              PadSize:=GetCoord(ValueToMeter(x),ValueToMeter(y));
 
             next;
           end
@@ -244,6 +248,24 @@ begin
         begin
           if pos('FOREIGN ', s)=1 then
           begin
+            Next;
+          end
+          else if pos('CLASS ', s)=1 then
+          begin
+            delete(s, 1,6); s:=trim(s);
+
+            if pos('PAD',s)=1 then cell.CellClass:=ccPad
+            else if pos('CORE',s)=1 then cell.CellClass:=ccCore
+            else if pos('ENDCAP',s)=1 then
+            begin
+              delete(s,1,6); s:=trim(s);
+
+              if pos('TOPLEFT',s)=1 then cell.CellClass:=ccEndCapTL
+              else if pos('TOPRIGHT',s)=1 then cell.CellClass:=ccEndCapTR
+              else if pos('BOTTOMRIGHT',s)=1 then cell.CellClass:=ccEndCapBR
+              else if pos('BOTTOMLEFT',s)=1 then cell.CellClass:=ccEndCapBL;
+            end;
+
             Next;
           end
           else if pos('SITE ', s)=1 then
