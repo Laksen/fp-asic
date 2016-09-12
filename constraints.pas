@@ -69,7 +69,7 @@ end;
 
 procedure LoadConstraints(const AFilename: string);
 begin
-
+  AddClock('Clock_500', 'Clk', 2e-9);
 end;
 
 constructor TConstraint.Create(const AName: string);

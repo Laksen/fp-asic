@@ -70,6 +70,7 @@ type
   TCell = class
   private
     fCellClass: TCellClass;
+    fDFF: boolean;
     fName: string;
     fPinsDefined: boolean;
     fPolys, fObs: array of TPoly;
@@ -96,6 +97,7 @@ type
     property Area: TArea read GetArea;
     property Size: TCoordinate read fSize write fSize;
     property CellClass: TCellClass read fCellClass write fCellClass;
+    property DFF: boolean read fDFF write fDFF;
 
     property PolygonCount: longint read GetPolygonCount;
     property Polygons[AIndex: longint]: TPoly read GetPolygons;
@@ -256,6 +258,7 @@ end;
 constructor TCell.Create(const AName: string);
 begin
   inherited Create;
+  fDFF:=false;
   setlength(fPolys, 0);
   setlength(fObs, 0);
   setlength(fPins, 0);

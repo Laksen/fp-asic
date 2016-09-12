@@ -4,7 +4,7 @@ program asictest;
 
 uses
   Classes, consoletestrunner,
-  geometrytest, libparsetest;
+  geometrytest, libparsetest, routingtest, routingutils;
 
 type
 

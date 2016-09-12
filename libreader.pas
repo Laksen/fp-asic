@@ -197,6 +197,9 @@ begin
 
     ci:=FindCell(cell.GetValue);
 
+    if assigned(cell.GetSingle('ff')) then
+      ci.DFF:=true;
+
     for pin in cell.GetMultiple('pin') do
     begin
       cpin:=ci.FindPin(pin.GetValue);

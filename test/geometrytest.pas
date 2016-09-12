@@ -136,7 +136,7 @@ begin
 end;
 
 initialization
-
   RegisterTest(TGeoTest);
+
 end.
 
